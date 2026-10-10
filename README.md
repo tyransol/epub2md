@@ -6,7 +6,8 @@
 上传 EPUB 后还能顺着书里的线索去公开书目库自动检索「作者 / 日文原名 / 日文版发售日 /
 ISBN / 出版社 / 书目来源 URL」，以候选卡片列出，点「采用」才写回表单。
 
-纯前端实现，无服务端、无构建步骤，可直接部署到 Cloudflare Pages 或 Vercel。
+纯静态前端，无构建步骤，可直接部署到 Cloudflare Pages 或 Vercel（图片上传走一层同源转发，
+见「图床」一节，由平台自带的 Function 承担，不需要你写服务端）。
 
 ## 目录结构
 
@@ -21,6 +22,9 @@ epub-to-md/
 │   ├── lookup.js       # 书目信息自动检索（NDL / openBD / 维基）
 │   ├── xml.js          # XML/DOM 小工具（converter 与 lookup 共用）
 │   └── images.js       # 图床上传 + 稳定时间派生
+├── functions/upload.js # Cloudflare Pages Function：同源上传代理
+├── api/upload.js       # Vercel Function：同源上传代理（vercel.json 把 /upload 重写到它）
+├── dev.mjs             # 本地开发服务器：静态文件 + 同源上传代理
 ├── vendor/fflate.js    # ZIP/DEFLATE 解压库（本地 vendor，无 CDN、无外链）
 ├── vercel.json         # Vercel 配置
 └── _headers            # Cloudflare Pages 响应头配置
@@ -84,16 +88,17 @@ EPUB 本地线索（dc:title / dc:creator / dc:identifier / 版权页「原著�
 
 ## 本地运行
 
-项目无依赖、无构建，任选一种静态服务器：
+项目无依赖、无构建：
 
 ```bash
-npm run dev          # npx serve . -l 5173
-# 或
-python -m http.server 5173
+npm run dev          # node dev.mjs → http://localhost:5173
 ```
 
-浏览器打开 <http://localhost:5173>。注意：图床上传是跨域请求，需通过 http(s) 访问页面，
-不要直接双击 `file://` 打开。
+浏览器打开 <http://localhost:5173>。
+
+**必须用 `dev.mjs`**，不要用 `npx serve .` / `python -m http.server` 这类纯静态服务器，
+也不要双击 `file://` 打开：图床的 `/upload` 不返回 CORS 头，浏览器跨域直连会在「上传封面」这一步
+报 `Failed to fetch`。`dev.mjs` 额外提供同源 `/upload` 转发，与部署后的 `functions/upload.js` 等价。
 
 ## 部署
 
@@ -105,6 +110,7 @@ python -m http.server 5173
    npx wrangler pages deploy . --project-name epub-to-md
    ```
 3. 根目录的 `_headers` 会自动生效（缓存与安全响应头）。
+4. 仓库根的 `functions/` 会被自动识别为 Pages Functions（即同源上传代理 `/upload`），无需额外配置。
 
 ### Vercel
 
@@ -113,13 +119,34 @@ python -m http.server 5173
    ```bash
    npx vercel --prod
    ```
-3. `vercel.json` 已配置静态缓存与安全响应头。
+3. `vercel.json` 已配置静态缓存、安全响应头，并把 `/upload` 重写到 `api/upload`（同源上传代理）。
 
 ## 图床
 
 默认图床为 `https://tc.iiiiii.cc.cd`（CloudFlare-ImgBed 部署），上传接口 `POST /upload`，
-返回 `{ src: "/file/..." }`。如需改用其它图床，修改 [src/images.js](src/images.js) 中的
-`DEFAULT_IMAGE_HOST` 与 `uploadImage` 的返回解析即可。
+返回 `{ src: "/file/..." }`；写入 Markdown 的图片直链都是该图床的绝对地址，不受代理影响。
+
+该部署的 `POST /upload` **不返回任何 CORS 响应头**（实测 `OPTIONS` 直接 405）。浏览器跨域直连时
+文件其实已经存进图床，但读取响应会被 CORS 拦成 `Failed to fetch`，拿不到直链。因此上传统一走
+**同源 `/upload` 代理**，由平台自带 Function 转发（本地则是 `dev.mjs`）：
+
+| 环境 | 代理 |
+| --- | --- |
+| Cloudflare Pages | `functions/upload.js`（自动识别） |
+| Vercel | `api/upload.js` + `vercel.json` 的 `/upload` 重写 |
+| 本地 | `dev.mjs`（`npm run dev`） |
+
+- **只想用纯静态托管**（GitHub Pages 等）：给图床响应加上 `Access-Control-Allow-Origin` 即可
+  （`*` 就够，上传不带凭据）；此时 [src/images.js](src/images.js) 会自动退回直连，
+  `functions/`、`api/`、`dev.mjs` 均可删除。
+- **换图床**：改 [src/images.js](src/images.js) 的 `DEFAULT_IMAGE_HOST`，同时改
+  [functions/upload.js](functions/upload.js) 与 [api/upload.js](api/upload.js) 里的转发目标。
+
+## 已知限制
+
+- EPUB 上限 20 MB；`dc:creator` 为空会直接报错，要求手填作者。
+- 目录项少于 2 条会报错，避免把结构异常的 EPUB 转出一份废稿。
+- 图片按内容哈希缓存（localStorage），同一张图在不同书之间只上传一次。
 
 ## 免责
 

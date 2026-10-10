@@ -5,8 +5,8 @@
   "type": "module",
   "description": "EPUB → Markdown：按主题规范构造 Frontmatter，纯前端无服务端，可部署到 Cloudflare Pages / Vercel",
   "scripts": {
-    "dev": "npx --yes serve . -l 5173",
-    "start": "npx --yes serve . -l 5173"
+    "dev": "node dev.mjs",
+    "start": "node dev.mjs"
   },
   "keywords": ["epub", "markdown", "frontmatter", "shirone", "cloudflare-pages", "vercel"],
   "license": "MIT"

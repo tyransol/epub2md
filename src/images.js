@@ -7,6 +7,17 @@
 
 export const DEFAULT_IMAGE_HOST = 'https://tc.iiiiii.cc.cd';
 
+/**
+ * 上传入口路径。始终打同源 `/upload`，由同源代理转发到图床：
+ * Cloudflare Pages → functions/upload.js，Vercel → api/upload.js（vercel.json 重写），
+ * 本地 → dev.mjs（npm run dev）。
+ *
+ * 起因（实测）：图床的 POST /upload 返回 200 但不带任何 Access-Control-Allow-Origin，
+ * OPTIONS 直接 405。浏览器跨域直连时文件其实已存进图床，却在读取响应时被 CORS 拦成
+ * TypeError: Failed to fetch，拿不到 src。同源转发不存在跨域，问题消失。
+ */
+export const UPLOAD_PATH = '/upload';
+
 const hex = (buf) =>
   Array.from(new Uint8Array(buf)).map((x) => x.toString(16).padStart(2, '0')).join('');
 
@@ -26,18 +37,41 @@ export const mimeOf = (f) =>
   : /\.svg$/i.test(f) ? 'image/svg+xml'
   : 'image/jpeg';
 
+const makeBody = (bytes, name) => {
+  const body = new FormData();
+  body.append('file', new Blob([bytes], { type: mimeOf(name) }), name.split('/').pop());
+  return body;
+};
+
 /**
  * 上传一张图片到图床。cache 是 Map(hash → url)，由调用方传入并持久化。
+ *
+ * 顺序：① 同源 /upload 代理 → ② 代理不存在时退回图床直连（仅当图床自带 CORS 头才可能成功）。
  * @returns {Promise<string>} 图床直链
  */
 export async function uploadImage(bytes, name, cache, imageHost = DEFAULT_IMAGE_HOST, fetchImpl = fetch) {
   const hash = await sha256(bytes);
   if (cache && cache.has(hash)) return cache.get(hash);
-  const body = new FormData();
-  body.append('file', new Blob([bytes], { type: mimeOf(name) }), name.split('/').pop());
-  const res = await fetchImpl(imageHost + '/upload', { method: 'POST', body });
+  const post = (url) => fetchImpl(url, { method: 'POST', body: makeBody(bytes, name) });
+
+  let res = null;
+  try { res = await post(UPLOAD_PATH); } catch { res = null; }        // 纯静态托管：连不上代理
+  if (!res || res.status === 404 || res.status === 405) {            // 代理缺失 → 试直连
+    try { res = await post(imageHost + UPLOAD_PATH); } catch { res = null; }
+  }
+  if (!res) {
+    throw new Error(
+      `图床上传失败：同源代理 ${UPLOAD_PATH} 不可用，图床 ${imageHost} 也未返回 CORS 头，`
+      + '浏览器跨域读不到上传结果（文件可能已存入图床，但拿不到直链）。'
+      + '部署到 Cloudflare Pages / Vercel 时会自动带上代理；本地请用 npm run dev。');
+  }
   if (!res.ok) throw new Error('图床上传失败：HTTP ' + res.status);
-  const json = await res.json();
+
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch {
+    throw new Error('图床返回的不是 JSON（可能命中了静态托管的兜底页）：' + text.trim().slice(0, 80));
+  }
   const src = (Array.isArray(json) ? json[0] : json)?.src;
   if (typeof src !== 'string' || !/^\/file\/[\w.%/-]+$/.test(src)) {
     throw new Error('图床返回的 src 无效：' + JSON.stringify(json).slice(0, 120));
