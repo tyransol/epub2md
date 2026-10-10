@@ -43,30 +43,57 @@ const makeBody = (bytes, name) => {
   return body;
 };
 
-/** 图床偶发失败的重试间隔（毫秒）。实测约 4% 的上传会返回 500 {"error":"Failed to get file ID"}。 */
-const RETRY_DELAYS = [400, 1000];
+/**
+ * 图床限流（实测）：其 Telegram 后端约每分钟只收 ~20 张，超了返回
+ *   500 {"error":"Too Many Requests: retry after 23"}
+ * 一本书 20+ 张图连传必撞，所以先**主动限速**（约 17 张/分钟），
+ * 撞上了则按它给的 retry after 秒数等待，而不是死等固定 0.4s。
+ */
+const UPLOAD_INTERVAL_MS = 3500;
+const ATTEMPTS = 4;
+const MAX_WAIT_MS = 90_000;
+const RETRY_AFTER_RE = /retry after (\d+)/i;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+let lastUploadAt = 0;
+async function pace() {
+  const wait = lastUploadAt + UPLOAD_INTERVAL_MS - Date.now();
+  if (wait > 0) await sleep(wait);
+  lastUploadAt = Date.now();
+}
 
 const isTransient = (res) => !!res && (res.status === 429 || res.status >= 500);
 
+/** 等待时长：优先听图床的 retry after，没有提示才退回默认退避。 */
+const waitFor = (detail, attempt) =>
+  Math.min(RETRY_AFTER_RE.test(detail) ? Number(RETRY_AFTER_RE.exec(detail)[1]) * 1000 + 500
+    : [800, 2000, 4000][attempt] ?? 4000, MAX_WAIT_MS);
+
 /**
- * 带退避的 POST。体感上很必要：一本书 20+ 张图，按 4% 的偶发失败率，
- * 不重试的话几乎每次转换都会中途挂掉。bodyFactory 每次都新建 FormData（body 不可复用）。
+ * 带退避的 POST。bodyFactory 每次都新建 FormData（请求体不可复用）。
+ * @returns {Promise<{res: object, detail: string}>} detail 为最后一次失败响应体（已被读掉）
  */
-async function postWithRetry(fetchImpl, url, bodyFactory) {
+async function postWithRetry(fetchImpl, url, bodyFactory, onWait = () => {}) {
   let res = null;
+  let detail = '';
   let lastError = null;
-  for (let attempt = 0; ; attempt++) {
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     try {
       res = await fetchImpl(url, { method: 'POST', body: bodyFactory() });
-      if (!isTransient(res)) return res;
+      if (!isTransient(res)) return { res, detail: '' };
+      detail = (await res.text()).trim().slice(0, 160);
     } catch (e) {
       lastError = e;
       res = null;
+      detail = '';
     }
-    if (attempt >= RETRY_DELAYS.length) break;
-    await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
+    if (attempt === ATTEMPTS - 1) break;
+    const wait = waitFor(detail, attempt);
+    onWait(wait, detail);
+    await sleep(wait);
   }
-  if (res) return res;
+  if (res) return { res, detail };
   throw lastError;
 }
 
@@ -74,28 +101,31 @@ async function postWithRetry(fetchImpl, url, bodyFactory) {
  * 上传一张图片到图床。cache 是 Map(hash → url)，由调用方传入并持久化。
  *
  * 顺序：① 同源 /upload 代理 → ② 代理不存在时退回图床直连（仅当图床自带 CORS 头才可能成功）。
+ * @param {function} [onWait] (ms, detail) 撞上限流准备等待时回调，供 UI 提示进度
  * @returns {Promise<string>} 图床直链
  */
-export async function uploadImage(bytes, name, cache, imageHost = DEFAULT_IMAGE_HOST, fetchImpl = fetch) {
+export async function uploadImage(
+  bytes, name, cache, imageHost = DEFAULT_IMAGE_HOST, fetchImpl = fetch, onWait = () => {}) {
   const hash = await sha256(bytes);
   if (cache && cache.has(hash)) return cache.get(hash);
+  await pace();                       // 主动限速，避免连传触发图床限流
   const body = () => makeBody(bytes, name);
 
-  let res = null;
-  try { res = await postWithRetry(fetchImpl, UPLOAD_PATH, body); } catch { res = null; }   // 纯静态托管：连不上代理
-  if (!res || res.status === 404 || res.status === 405) {                                  // 代理缺失 → 试直连
-    try { res = await postWithRetry(fetchImpl, imageHost + UPLOAD_PATH, body); } catch { res = null; }
+  let out = null;
+  try { out = await postWithRetry(fetchImpl, UPLOAD_PATH, body, onWait); } catch { out = null; }  // 纯静态托管：连不上代理
+  if (!out || out.res.status === 404 || out.res.status === 405) {                                 // 代理缺失 → 试直连
+    try { out = await postWithRetry(fetchImpl, imageHost + UPLOAD_PATH, body, onWait); } catch { out = null; }
   }
-  if (!res) {
+  if (!out) {
     throw new Error(
       `图床上传失败：同源代理 ${UPLOAD_PATH} 不可用，图床 ${imageHost} 也未返回 CORS 头，`
       + '浏览器跨域读不到上传结果（文件可能已存入图床，但拿不到直链）。'
       + '部署到 Cloudflare Pages / Vercel 时会自动带上代理；本地请用 npm run dev。');
   }
+  const { res, detail } = out;
   if (!res.ok) {
-    const detail = (await res.text()).trim().slice(0, 160);
     throw new Error(
-      `图床上传失败：HTTP ${res.status}（已重试 ${RETRY_DELAYS.length + 1} 次）：${detail || '图床未返回说明'}`);
+      `图床上传失败：HTTP ${res.status}（已重试 ${ATTEMPTS} 次）：${detail || '图床未返回说明'}`);
   }
 
   const text = await res.text();

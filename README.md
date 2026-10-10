@@ -142,9 +142,14 @@ npm run dev          # node dev.mjs → http://localhost:5173
 - **只想用纯静态托管**（GitHub Pages 等）：给图床响应加上 `Access-Control-Allow-Origin` 即可
   （`*` 就够，上传不带凭据）；此时 [src/images.js](src/images.js) 会自动退回直连，
   `functions/`、`api/`、`dev.mjs` 均可删除。
-- 图床**偶发 5xx**：实测约 4% 的上传会返回 `500 {"error":"Failed to get file ID"}`（其存储后端抖动）。
-  一本书 20+ 张图，不重试几乎必挂，所以上传带 3 次退避重试（400ms / 1000ms）；仍失败时报错会
-  把图床返回的原文一并带出来，不再只说 `HTTP 500`。
+- 图床**有速率上限与偶发 5xx**，实测速率为：
+  - 限流：其 Telegram 后端约每分钟只收 ~20 张，超了返回 `500 {"error":"Too Many Requests: retry after 23"}`。
+    一本书 20+ 张图连传必撞，所以上传**主动限速**约 3.5s 一张（≈17 张/分钟），先避开限流。
+  - 抖动：约 4% 的上传会返回 `500 {"error":"Failed to get file ID"}`。
+
+  两者都按「最多 4 次尝试」重试：撞限流时**读它给的 `retry after` 秒数再等**（单次最长 90s），
+  其余情况按 0.8s / 2s / 4s 退避；等待期间界面会提示「图床限流，等待 Ns…」。仍然失败时报错会把
+  图床返回的原文一并带出来，不再只说 `HTTP 500`。
 - **换图床**：改 [src/images.js](src/images.js) 的 `DEFAULT_IMAGE_HOST`，同时改
   [functions/upload.js](functions/upload.js) 与 [api/upload.js](api/upload.js) 里的转发目标。
 
@@ -153,6 +158,7 @@ npm run dev          # node dev.mjs → http://localhost:5173
 - EPUB 上限 20 MB；`dc:creator` 为空会直接报错，要求手填作者。
 - 目录项少于 2 条会报错，避免把结构异常的 EPUB 转出一份废稿。
 - 图片按内容哈希缓存（localStorage），同一张图在不同书之间只上传一次。
+- 受图床限速，上传是「排队式」的：一本书 20+ 张图大约要等 1 分钟以上，期间界面会滚动提示等待。
 
 ## 免责
 

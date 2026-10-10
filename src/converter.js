@@ -69,7 +69,7 @@ async function renderInline(el, ctx, origin) {
     const item = resolvePath(origin, src);
     if (/\/zhu\.png$/i.test(item)) return '[注]';
     if (!ctx.files[item]) throw new Error(`缺少图片 ${item}（EPUB 内不存在该资源）`);
-    return `![${clean(el.getAttribute('alt')) || '插图'}](${await uploadImage(ctx.files[item], item, ctx.cache, ctx.imageHost, ctx.fetchImpl)})`;
+    return `![${clean(el.getAttribute('alt')) || '插图'}](${await uploadImage(ctx.files[item], item, ctx.cache, ctx.imageHost, ctx.fetchImpl, ctx.onWait)})`;
   }
   let v = '';
   for (const child of el.childNodes) v += await renderInline(child, ctx, origin);
@@ -179,7 +179,9 @@ export async function convertEpub(file, fields, opts = {}) {
   toc = toc.filter((x) => !!zip[x.href]);
   if (toc.length < 2) throw new Error(`目录项过少（${toc.length}），请人工检查 EPUB 结构`);
   const anchors = new Map(toc.map((x, i) => [x.href, 'section-' + (i + 1)]));
-  const ctx = { files, cache, imageHost, fetchImpl };
+  const onWait = (ms, detail) =>
+    onProgress(`图床限流，等待 ${Math.round(ms / 1000)}s 后重试${detail ? '（' + detail + '）' : ''}…`);
+  const ctx = { files, cache, imageHost, fetchImpl, onWait };
 
   onProgress('上传封面…');
   let coverUrl;
@@ -191,7 +193,7 @@ export async function convertEpub(file, fields, opts = {}) {
     if (!cover) throw new Error('EPUB 内未找到封面图片；请在“手动封面 URL”里填入图床地址');
     const coverPath = fileOf(cover);
     if (!zip[coverPath]) throw new Error('封面条目在 EPUB 内不存在：' + coverPath);
-    coverUrl = await uploadImage(zip[coverPath], coverPath, cache, imageHost, fetchImpl);
+    coverUrl = await uploadImage(zip[coverPath], coverPath, cache, imageHost, fetchImpl, onWait);
   }
 
   const stampInfo = await deriveStamp(bytes, fields.releaseDate, fields.japaneseTitle);
