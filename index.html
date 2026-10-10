@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EPUB → Markdown · Frontmatter 构造器</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>EPUB → Markdown</h1>
+  <div class="sub">一书一文件 · 目录锚点 · 封面与插图走图床 · <strong>Frontmatter 按主题规范构造</strong></div>
+
+  <div class="card">
+    <label>EPUB 文件（单本）<span class="req">*</span></label>
+    <input type="file" id="epub" accept=".epub,application/epub+zip">
+  </div>
+
+  <div class="card">
+    <div class="card-title">Frontmatter 方案</div>
+    <label>输出规范<span class="req">*</span></label>
+    <select id="profile">
+      <option value="shirone">Shirone（Astro 主题：image / category / published）</option>
+      <option value="generic">Hexo（通用兼容：cover / categories / date）</option>
+    </select>
+    <div class="hint">Shirone 方案不含 author / publisher 等 Hexo 遗留字段，作者信息写入正文。</div>
+
+    <div class="field-note" id="profileFields"></div>
+
+    <label>书名 / 标题 title<span class="req">*</span></label>
+    <input type="text" id="title" placeholder="义妹生活 第一卷（留空则取 EPUB 内书名）">
+
+    <label>系列名 category（留空自动从书名推导）</label>
+    <input type="text" id="series" placeholder="义妹生活">
+
+    <label>作者 author（写入正文，Shirone 不放入 frontmatter）</label>
+    <input type="text" id="author" placeholder="三河ごーすと、hiten（留空则取 EPUB 内作者）">
+
+    <label>日文原名<span class="req">*</span></label>
+    <input type="text" id="japaneseTitle" placeholder="義妹生活">
+
+    <label>日文版发售日<span class="req">*</span><span class="inline-hint">published = 次日 + 派生时分秒</span></label>
+    <input type="date" id="releaseDate">
+
+    <label>日期精度</label>
+    <select id="timePrecision">
+      <option value="datetime">日期 + 时分秒（YYYY-MM-DD HH:MM:SS，可稳定去重）</option>
+      <option value="date">仅日期（YYYY-MM-DD）</option>
+    </select>
+
+    <label>简介 description（留空则取 EPUB 内 dc:description）</label>
+    <textarea id="description" rows="3" placeholder="用于 Shirone 的 description 字段"></textarea>
+
+    <label>补充标签 tags<span class="inline-hint">逗号分隔，自动追加「轻小说 / 系列名 / 日文原名」</span></label>
+    <input type="text" id="tags" placeholder="恋爱, 校园">
+
+    <label class="check"><input type="checkbox" id="pinned"> 置顶 pinned</label>
+
+    <label>手动封面 URL（可选，仅当 EPUB 内没有封面图时填图床直链）</label>
+    <input type="text" id="coverUrlOverride" placeholder="https://tc.iiiiii.cc.cd/file/…">
+  </div>
+
+  <div class="card">
+    <div class="card-title">核对信息<span class="inline-hint">不写入文件，仅用于人工核对来源</span></div>
+    <label>出版社</label>
+    <input type="text" id="publisher" placeholder="KADOKAWA / 電撃文庫">
+    <label>书目来源 URL</label>
+    <input type="text" id="sourceUrl" placeholder="https://…">
+    <label>ISBN</label>
+    <input type="text" id="isbn" placeholder="978-4-04-865808-9">
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <button class="primary" id="go">开始转换</button>
+      <span id="cacheInfo" class="pill">图片缓存 —</span>
+      <button id="clearCache" class="mini">清空缓存</button>
+      <button id="forget" class="mini">忘记字段</button>
+    </div>
+    <div id="log"></div>
+    <div id="result"></div>
+    <div class="hint">字段与图片缓存记在本机浏览器；图片按内容哈希缓存，同一本书重跑不会重复上传。<br>
+      本页只做技术自检 —— 书目是否属实必须人工核对来源，程序不会替你断言。</div>
+  </div>
+</div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
