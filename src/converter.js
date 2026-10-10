@@ -12,11 +12,9 @@
 import { unzipSync, strFromU8 } from '../vendor/fflate.js';
 import { uploadImage, deriveStamp, DEFAULT_IMAGE_HOST } from './images.js';
 import { buildFrontmatter, checkFrontmatter, seriesName } from './frontmatter.js';
+import { clean, text, xmlParse, all, find } from './xml.js';
 
 export const MAX_EPUB_BYTES = 20_000_000;
-
-const clean = (t) => (t || '').replace(/\u00a0/g, ' ').trim();
-const text = (n) => clean(n && n.textContent);
 
 /** 不渲染的成品页：封面页、书名页、提示页、目录页。 */
 const SKIP_PAGE = /(?:^|\/)(?:cover|title|message|contents[^/]*)\.xhtml$/i;
@@ -47,24 +45,6 @@ function stripCredits(lines) {
   }
   return { lines: out, removed };
 }
-
-/** 浏览器用原生 DOMParser；Node（测试）由调用方注入 linkedom。 */
-function xmlParse(source) {
-  const Ctor = globalThis.DOMParser;
-  if (!Ctor) throw new Error('当前环境没有 DOMParser（浏览器自带；Node 请注入 linkedom）');
-  return new Ctor().parseFromString(source, 'application/xml');
-}
-
-function all(doc, name) {
-  const out = [];
-  const walk = (n) => {
-    if (n.nodeType === 1 && (n.localName === name || (n.localName || '').endsWith(':' + name))) out.push(n);
-    for (const c of n.childNodes || []) walk(c);
-  };
-  walk(doc);
-  return out;
-}
-const find = (doc, name) => all(doc, name)[0];
 
 function resolvePath(base, rel) {
   const parts = base.split('/');

@@ -61,6 +61,25 @@
   </div>
 
   <div class="card">
+    <div class="card-title">书目信息自动检索<span class="inline-hint">NDL Search / openBD / 维基 · 全部为公开接口</span></div>
+    <label>检索书名<span class="inline-hint">留空则取上方 title，或点「从 EPUB 读取线索」</span></label>
+    <input type="text" id="lkTitle" placeholder="义妹生活">
+    <label>作者<span class="inline-hint">可选，仅用于把同一系列的卷次排到前面</span></label>
+    <input type="text" id="lkAuthor" placeholder="三河ごーすと">
+    <label>ISBN<span class="inline-hint">可选；台版 ISBN 也能先试一跳</span></label>
+    <input type="text" id="lkIsbn" placeholder="978-4-04-684555-9">
+    <div class="row" style="margin-top:12px">
+      <button id="lkFromEpub" class="mini">从 EPUB 读取线索</button>
+      <button id="lkGo" class="primary">检索书目</button>
+      <span id="lkInfo" class="pill">未检索</span>
+    </div>
+    <div class="hint">NDL（国立国会図書館）有并发限流，失败会明确报错、不会被当成「查无此书」。<br>
+      日亚没有公开接口且禁止抓取，只提供外链供人工核对。出版日期往往只到「年月」，会标注精度，日部分需你确认。</div>
+    <div id="lkLog"></div>
+    <div id="lkResult"></div>
+  </div>
+
+  <div class="card">
     <div class="card-title">核对信息<span class="inline-hint">不写入文件，仅用于人工核对来源</span></div>
     <label>出版社</label>
     <input type="text" id="publisher" placeholder="KADOKAWA / 電撃文庫">

@@ -14,6 +14,8 @@ epub-to-md/
 ├── src/
 │   ├── converter.js    # EPUB 解析 / 正文渲染 / 产物组装
 │   ├── frontmatter.js  # ★ Frontmatter 构造与自检（本项目核心）
+│   ├── lookup.js       # 书目信息自动检索（NDL / openBD / 维基）
+│   ├── xml.js          # XML/DOM 小工具（converter 与 lookup 共用）
 │   └── images.js       # 图床上传 + 稳定时间派生
 ├── vendor/fflate.js    # ZIP/DEFLATE 解压库（本地 vendor，无 CDN、无外链）
 ├── vercel.json         # Vercel 配置
@@ -41,6 +43,40 @@ epub-to-md/
 
 时间派生：`published = 发售日 + 1 天`，时分秒 = `SHA-256(EPUB字节 + 发售日 + 日文原名)` 前 4 字节 `% 86400`，
 因此同一本书任何时间重跑都得到同一个时间戳（无需服务端存储）。
+
+## 书目信息自动检索
+
+上传 EPUB 后由 [src/lookup.js](src/lookup.js) 带着线索去查「作者 / 日文原名 / 日文版发售日 / ISBN /
+书目来源 URL / 出版社」，结果以**候选卡片**列出，点「采用」才写入表单。仍然无需服务端。
+
+数据源（均为实测支持跨域的公开接口，`Access-Control-Allow-Origin: *`）：
+
+| 源 | 接口 | 用途 |
+| --- | --- | --- |
+| NDL Search（国立国会図書館） | `ndlsearch.ndl.go.jp/api/opensearch` | 主力：书名/ISBN → 日文原名、著者、出版社、刊行年月、ISBN、**权威书目页 URL** |
+| openBD | `api.openbd.jp/v1/get?isbn=` | ISBN → 出版社、出版年月（用于补「只到年」的日期） |
+| Wikipedia | `zh.wikipedia.org/w/api.php` | 中文译名 → 日文原名（`opensearch` + `langlinks(ja)`） |
+| Wikidata | `wikidata.org/w/api.php` | 日文原名的兜底来源 |
+
+检索顺序（按请求数最少逐级降级）：
+
+```
+EPUB 本地线索（dc:title / dc:creator / dc:identifier / 版权页「原著名」）
+  → ① NDL ?isbn=      → ② openBD ?isbn=
+  → ③ 求日文原名（zh.wikipedia → langlinks(ja)，兜底 Wikidata）
+  → ④ NDL ?title=<日文原名>&cnt=10 → 多卷候选
+```
+
+规矩：
+
+1. **不猜**。每条候选都标出来源与可核对的原始链接；字段是「采用」写的，不是程序断言的。
+2. 采用时**只填空字段，绝不覆盖**你已手填的内容。
+3. 出版日期常只到「年月」。此时会按 `YYYY-MM-01` 填入，并在候选卡片与转换后的自检报告里
+   明确标注「日部分需人工核对」，不假装知道「日」。
+4. NDL 有**并发限流**（会返回 `429 同時アクセス数の上限に達した`）：请求带 10s 超时与指数退避重试，
+   失败会被明确记为「该源不可用」，**不会被当成「查无此书」**。
+5. 日亚（Amazon.co.jp）没有公开 API 且禁止抓取，因此**只生成外链**（Amazon.co.jp / Google / 维基）
+   供人工核对，本工具不做抓取。
 
 ## 本地运行
 
@@ -83,5 +119,6 @@ python -m http.server 5173
 
 ## 免责
 
-本工具只做技术转换与格式自检。书名、系列、日文原名、发售日、ISBN 等书目信息必须人工核对来源，
-程序不会替你断言真伪。
+本工具只做技术转换、格式自检与书目检索。检索结果只是**候选**，来自第三方公开接口，
+可能有旧版、不同卷次或异体表记；书名、系列、日文原名、发售日、ISBN 必须以候选卡片给出的
+书目页为准人工核对——程序不会替你断言真伪，也从不替你「猜」。

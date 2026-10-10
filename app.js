@@ -4,6 +4,7 @@
  */
 import { convertEpub, MAX_EPUB_BYTES } from './src/converter.js';
 import { PROFILES, seriesName } from './src/frontmatter.js';
+import { lookupBook, extractEpubClues, externalLinks, refineByIsbn, SOURCES } from './src/lookup.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -18,6 +19,8 @@ const CACHE_MAX = 800;
 
 const logEl = $('log');
 const resEl = $('result');
+const lkLogEl = $('lkLog');
+const lkResEl = $('lkResult');
 
 // ---- 字段记忆 ----
 const saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
@@ -111,6 +114,156 @@ function readFields() {
   return f;
 }
 
+// ---- 书目信息检索 ----
+// 规矩：只采用、不猜。候选一律标出来源；只填空字段，绝不覆盖已手填内容。
+const esc = (s) => String(s ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+/** 采用时产生的「需人工确认」项，转换后随自检报告一起显示。 */
+let adoptNotes = [];
+
+const lkLog = (t) => { lkLogEl.textContent += t + '\n'; lkLogEl.scrollTop = lkLogEl.scrollHeight; };
+
+/** 只填空值，不覆盖用户已填内容。 */
+function fillIfEmpty(id, v) {
+  const el = $(id);
+  if (!v || el.value.trim()) return false;
+  el.value = v;
+  return true;
+}
+
+/** 从选中的 EPUB 里读线索（纯本地，不发请求）。 */
+async function readClues() {
+  const file = $('epub').files[0];
+  if (!file) { lkLog('请先在顶部选择 EPUB 文件。'); return; }
+  try {
+    const c = extractEpubClues(new Uint8Array(await file.arrayBuffer()));
+    lkLog(`读线索：${file.name}`);
+    lkLog(`· 书名「${c.title || '—'}」作者「${c.author || '—'}」出版社「${c.publisher || '—'}」ISBN「${c.isbn || '无'}」`);
+    if (c.originalTitle) lkLog(`· 版权页「原著名」：${c.originalTitle}`);
+    const titleClue = c.originalTitle || c.title;
+    const filled = [];
+    if (fillIfEmpty('lkTitle', titleClue)) filled.push(c.originalTitle ? '书名（版权页原著名）' : '书名');
+    if (fillIfEmpty('lkAuthor', c.author)) filled.push('作者');
+    if (fillIfEmpty('lkIsbn', c.isbn)) filled.push('ISBN');
+    lkLog(filled.length ? `· 已填入检索框：${filled.join('、')}` : '· 检索框已有内容，未覆盖');
+  } catch (e) {
+    lkLog('✗ 读取线索失败：' + ((e && e.message) || e));
+  }
+}
+
+function linksHtml(q) {
+  const links = externalLinks({ title: q.title, japaneseTitle: q.japaneseTitle, isbn: q.isbn });
+  return '<div class="hint">人工核对外链：' +
+    links.map((l) => `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noreferrer">${esc(l.label)}</a>`).join('') +
+    '</div>';
+}
+
+function precisionText(c) {
+  if (c.datePrecision === 'day') return '精确到日';
+  if (c.datePrecision === 'month') return '只到「年月」，日按 01 填入，需确认';
+  if (c.datePrecision === 'year') return '只到「年」，需确认';
+  return '该来源未给出版日期';
+}
+
+function renderCandidates(res) {
+  if (!res.candidates.length) {
+    lkResEl.innerHTML = '<div class="bad">没有候选。请用外链人工核对，或直接手填（查不到就空着，不要猜）。</div>' +
+      linksHtml({ title: res.query.title, japaneseTitle: res.japaneseTitle, isbn: res.query.isbn });
+    return;
+  }
+  const parts = [];
+  if (res.japaneseTitle) {
+    parts.push(`<div class="hint">推得日文原名：<b>${esc(res.japaneseTitle)}</b>（${esc(res.japaneseTitleVia || '')}）</div>`);
+  }
+  parts.push('<div class="cand-list">');
+  res.candidates.forEach((c, i) => {
+    parts.push(
+      `<div class="cand">
+        <div class="cand-head">
+          <b>${esc(c.title)}</b>
+          ${c.authorMatch ? '<span class="pill acc">作者匹配</span>' : ''}
+          <span class="pill">${esc((SOURCES[c.source] || {}).label || c.source)}</span>
+        </div>
+        <div class="cand-body">著者：${esc(c.author || '—')}　出版社：${esc(c.publisher || '—')}<br>
+          出版：${esc(c.issuedRaw || '—')} → ${esc(c.date || '—')}（${precisionText(c)}）<br>
+          ISBN：${esc(c.isbnRaw || '—')}</div>
+        <div class="row">
+          <button class="mini adopt" data-i="${i}">采用</button>
+          ${c.url ? `<a class="link-btn" href="${esc(c.url)}" target="_blank" rel="noreferrer">查书目页</a>` : ''}
+        </div>
+      </div>`);
+  });
+  parts.push('</div>');
+  parts.push(linksHtml({ title: res.query.title, japaneseTitle: res.japaneseTitle, isbn: res.query.isbn }));
+  lkResEl.innerHTML = parts.join('');
+  lkResEl.querySelectorAll('button.adopt').forEach((b) => {
+    b.onclick = () => adopt(res.candidates[Number(b.dataset.i)], res, b);
+  });
+}
+
+/** 采用一条候选：写入表单空字段，并留下「需人工确认」提示。 */
+async function adopt(cand, res, btn) {
+  btn.disabled = true;
+  let c = cand;
+  if (c.datePrecision === 'year' && c.isbn) {
+    lkLog('… 日期只到「年」，向 openBD 补一次出版年月');
+    c = await refineByIsbn(c, { onLog: lkLog });
+  }
+  const ja = res.japaneseTitle || seriesName(c.title);
+  const filled = [];
+  if (fillIfEmpty('japaneseTitle', ja)) filled.push('日文原名');
+  if (fillIfEmpty('releaseDate', c.date)) filled.push('发售日');
+  if (fillIfEmpty('isbn', c.isbnRaw || c.isbn)) filled.push('ISBN');
+  if (fillIfEmpty('sourceUrl', c.url)) filled.push('书目来源 URL');
+  if (fillIfEmpty('publisher', c.publisher)) filled.push('出版社');
+  if (fillIfEmpty('author', c.author)) filled.push('作者');
+  persist();
+
+  const warn = c.datePrecision && c.datePrecision !== 'day'
+    ? `「${c.title}」的出版日期原文是 ${c.issuedRaw}（${c.datePrecision === 'month' ? '仅到月' : '仅到年'}），已按 ${c.date} 填入，日部分必须人工核对来源后修正`
+    : '';
+  if (warn && !adoptNotes.includes(warn)) adoptNotes.push(warn);
+
+  lkLog(`✓ 采用「${c.title}」→ 已填：${filled.length ? filled.join('、') : '无（字段已有内容，未覆盖）'}`);
+  if (warn) lkLog('⚠ ' + warn);
+  lkResEl.querySelectorAll('.cand').forEach((el) => el.classList.remove('picked'));
+  if (btn.closest('.cand')) btn.closest('.cand').classList.add('picked');
+  btn.disabled = false;
+  btn.textContent = '已采用';
+}
+
+async function doLookup() {
+  const query = {
+    title: val('lkTitle') || val('title'),
+    author: val('lkAuthor') || val('author'),
+    isbn: val('lkIsbn') || val('isbn'),
+    japaneseTitle: val('japaneseTitle'),
+  };
+  lkLogEl.textContent = '';
+  lkResEl.innerHTML = '';
+  $('lkGo').disabled = true;
+  $('lkInfo').textContent = '检索中…';
+  lkLog(`检索：书名「${query.title || '—'}」作者「${query.author || '—'}」ISBN「${query.isbn || '—'}」`);
+  try {
+    const res = await lookupBook(query, { onLog: lkLog });
+    renderCandidates(res);
+    $('lkInfo').textContent = `候选 ${res.candidates.length} 条 / 请求 ${res.steps.length} 次`;
+  } catch (e) {
+    const msg = (e && e.message) || String(e);
+    lkLog('✗ ' + msg);
+    $('lkInfo').textContent = '检索失败';
+    lkResEl.innerHTML = `<div class="bad">✗ ${esc(msg)}</div>`;
+  } finally {
+    $('lkGo').disabled = false;
+  }
+}
+
+$('lkFromEpub').onclick = readClues;
+$('lkGo').onclick = doLookup;
+$('epub').addEventListener('change', () => {
+  adoptNotes = [];      // 换书即换上下文
+  readClues();          // 上传即读本地线索（不发请求）
+});
+
 $('go').onclick = async () => {
   logEl.textContent = '';
   resEl.innerHTML = '';
@@ -144,6 +297,9 @@ $('go').onclick = async () => {
       `<div class="${r.ok ? 'ok' : 'bad'}">${r.ok ? '✓ 技术自检通过' : '✗ 技术自检发现问题'}</div>` +
       (r.problems.length ? `<ul class="bad">${r.problems.map((p) => `<li>${p}</li>`).join('')}</ul>` : '') +
       `<ul>${r.notes.map((n) => `<li>${n}</li>`).join('')}</ul>` +
+      (adoptNotes.length
+        ? `<div class="bad">⚠ 采用的书目信息需人工确认：</div><ul class="bad">${adoptNotes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>`
+        : '') +
       `<div class="hint">生成的 frontmatter：</div><pre class="preview">${fm.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}</pre>` +
       `<div class="hint">文件已下载到本地。交付前请人工核对：书名、系列、日文原名、发售日是否与来源一致。</div>`;
   } catch (e) {

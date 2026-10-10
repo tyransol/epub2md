@@ -40,3 +40,18 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 99px; background: #232a36; color: var(--dim); }
 pre.preview { background: #0e1015; border: 1px solid var(--line); border-radius: 8px; padding: 10px;
               overflow: auto; font: 12px/1.6 ui-monospace, Menlo, Consolas, monospace; color: #cfe1ff; max-height: 260px; }
+
+/* 书目检索 */
+#lkLog { font: 12px/1.7 ui-monospace, Menlo, Consolas, monospace; color: var(--dim); white-space: pre-wrap;
+         max-height: 170px; overflow: auto; margin-top: 10px; }
+#lkResult { margin-top: 4px; }
+.cand-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.cand { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #0e1015; }
+.cand.picked { border-color: var(--ok); }
+.cand-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.cand-body { font-size: 12.5px; color: var(--dim); margin: 6px 0 8px; line-height: 1.7; }
+.pill.acc { background: #1d3a2c; color: var(--ok); }
+a.link-btn { display: inline-block; font-size: 12px; padding: 6px 10px; border: 1px solid var(--line);
+             border-radius: 8px; background: #232a36; color: var(--fg); text-decoration: none; }
+a.link-btn:hover { border-color: var(--acc); }
+.hint a.link-btn { margin-right: 6px; }
