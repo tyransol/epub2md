@@ -92,7 +92,7 @@ export function buildTags({ series, japaneseTitle, extra = [] } = {}) {
  *   title         书名（含卷）。
  *   series        系列名（Shirone category）。缺省时由 title 推导。
  *   japaneseTitle 日文原名，用于 tags。
- *   description   简介（Shirone description）。
+ *   description   简介（Shirone description）。为空时输出空串，字段不省略（不做正文回退提取）。
  *   author        作者（generic 方案使用；Shirone 不使用）。
  *   publisher     出版社（generic 方案使用；Shirone 不使用）。
  *   coverUrl      封面直链（Shirone image / generic cover）。
@@ -121,7 +121,9 @@ export function buildFrontmatter(meta = {}, opts = {}) {
 
   if (profile === 'shirone') {
     lines.push('title: ' + q(title));
-    if (trim(meta.description)) lines.push('description: ' + q(trim(meta.description)));
+    // description 始终输出：EPUB 没有 dc:description、用户也没填时写空串，而不是省略字段，
+    // 这样字段序列与主题要求一致，自检也不会把它报成「缺少字段」。
+    lines.push('description: ' + q(trim(meta.description)));
     if (coverUrl) {
       if (!/^https:\/\//.test(coverUrl)) throw new Error('image 必须是 HTTPS 直链：' + coverUrl);
       lines.push('image: ' + q(coverUrl));

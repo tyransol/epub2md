@@ -48,6 +48,8 @@ epub-to-md/
 5. `published` / `date` 输出为 YAML 时间戳，可被主题的 `z.date()` 解析。
 6. Shirone 方案**不输出** Hexo 遗留字段（`author` / `publisher` / `cover` / `categories` / `date`），
    作者信息写入正文 `**作者：** …`。
+7. `description` **始终输出**：EPUB 没有 `dc:description`、你也没填时写 `description: ""`，
+   不省略字段、也不从正文里替你摘一段当简介。
 
 时间派生：`published = 发售日 + 1 天`，时分秒 = `SHA-256(EPUB字节 + 发售日 + 日文原名)` 前 4 字节 `% 86400`，
 因此同一本书任何时间重跑都得到同一个时间戳（无需服务端存储）。
