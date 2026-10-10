@@ -142,6 +142,9 @@ npm run dev          # node dev.mjs → http://localhost:5173
 - **只想用纯静态托管**（GitHub Pages 等）：给图床响应加上 `Access-Control-Allow-Origin` 即可
   （`*` 就够，上传不带凭据）；此时 [src/images.js](src/images.js) 会自动退回直连，
   `functions/`、`api/`、`dev.mjs` 均可删除。
+- 图床**偶发 5xx**：实测约 4% 的上传会返回 `500 {"error":"Failed to get file ID"}`（其存储后端抖动）。
+  一本书 20+ 张图，不重试几乎必挂，所以上传带 3 次退避重试（400ms / 1000ms）；仍失败时报错会
+  把图床返回的原文一并带出来，不再只说 `HTTP 500`。
 - **换图床**：改 [src/images.js](src/images.js) 的 `DEFAULT_IMAGE_HOST`，同时改
   [functions/upload.js](functions/upload.js) 与 [api/upload.js](api/upload.js) 里的转发目标。
 

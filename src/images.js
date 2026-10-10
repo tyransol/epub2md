@@ -43,6 +43,33 @@ const makeBody = (bytes, name) => {
   return body;
 };
 
+/** 图床偶发失败的重试间隔（毫秒）。实测约 4% 的上传会返回 500 {"error":"Failed to get file ID"}。 */
+const RETRY_DELAYS = [400, 1000];
+
+const isTransient = (res) => !!res && (res.status === 429 || res.status >= 500);
+
+/**
+ * 带退避的 POST。体感上很必要：一本书 20+ 张图，按 4% 的偶发失败率，
+ * 不重试的话几乎每次转换都会中途挂掉。bodyFactory 每次都新建 FormData（body 不可复用）。
+ */
+async function postWithRetry(fetchImpl, url, bodyFactory) {
+  let res = null;
+  let lastError = null;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await fetchImpl(url, { method: 'POST', body: bodyFactory() });
+      if (!isTransient(res)) return res;
+    } catch (e) {
+      lastError = e;
+      res = null;
+    }
+    if (attempt >= RETRY_DELAYS.length) break;
+    await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
+  }
+  if (res) return res;
+  throw lastError;
+}
+
 /**
  * 上传一张图片到图床。cache 是 Map(hash → url)，由调用方传入并持久化。
  *
@@ -52,12 +79,12 @@ const makeBody = (bytes, name) => {
 export async function uploadImage(bytes, name, cache, imageHost = DEFAULT_IMAGE_HOST, fetchImpl = fetch) {
   const hash = await sha256(bytes);
   if (cache && cache.has(hash)) return cache.get(hash);
-  const post = (url) => fetchImpl(url, { method: 'POST', body: makeBody(bytes, name) });
+  const body = () => makeBody(bytes, name);
 
   let res = null;
-  try { res = await post(UPLOAD_PATH); } catch { res = null; }        // 纯静态托管：连不上代理
-  if (!res || res.status === 404 || res.status === 405) {            // 代理缺失 → 试直连
-    try { res = await post(imageHost + UPLOAD_PATH); } catch { res = null; }
+  try { res = await postWithRetry(fetchImpl, UPLOAD_PATH, body); } catch { res = null; }   // 纯静态托管：连不上代理
+  if (!res || res.status === 404 || res.status === 405) {                                  // 代理缺失 → 试直连
+    try { res = await postWithRetry(fetchImpl, imageHost + UPLOAD_PATH, body); } catch { res = null; }
   }
   if (!res) {
     throw new Error(
@@ -65,7 +92,11 @@ export async function uploadImage(bytes, name, cache, imageHost = DEFAULT_IMAGE_
       + '浏览器跨域读不到上传结果（文件可能已存入图床，但拿不到直链）。'
       + '部署到 Cloudflare Pages / Vercel 时会自动带上代理；本地请用 npm run dev。');
   }
-  if (!res.ok) throw new Error('图床上传失败：HTTP ' + res.status);
+  if (!res.ok) {
+    const detail = (await res.text()).trim().slice(0, 160);
+    throw new Error(
+      `图床上传失败：HTTP ${res.status}（已重试 ${RETRY_DELAYS.length + 1} 次）：${detail || '图床未返回说明'}`);
+  }
 
   const text = await res.text();
   let json;
