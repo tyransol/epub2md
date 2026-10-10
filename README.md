@@ -1,8 +1,12 @@
 # EPUB → Markdown（Frontmatter 构造器）
 
 把单本 EPUB 转成一份可直接入库的 Markdown：目录锚点、正文清洗、封面与插图上传图床，
-并按照目标主题的字段规范**构造 frontmatter**。纯前端实现，无服务端、无构建步骤，
-可直接部署到 Cloudflare Pages 或 Vercel。
+并按照目标主题的字段规范**构造 frontmatter**。
+
+上传 EPUB 后还能顺着书里的线索去公开书目库自动检索「作者 / 日文原名 / 日文版发售日 /
+ISBN / 出版社 / 书目来源 URL」，以候选卡片列出，点「采用」才写回表单。
+
+纯前端实现，无服务端、无构建步骤，可直接部署到 Cloudflare Pages 或 Vercel。
 
 ## 目录结构
 
