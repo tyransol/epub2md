@@ -119,7 +119,10 @@ npm run dev          # node dev.mjs → http://localhost:5173
    ```bash
    npx vercel --prod
    ```
-3. `vercel.json` 已配置静态缓存、安全响应头，并把 `/upload` 重写到 `api/upload`（同源上传代理）。
+3. `vercel.json` 已配置安全响应头，并把 `/upload` 重写到 `api/upload`（同源上传代理）。
+
+两边都把 `Cache-Control` 设为 `no-cache`：文件名没有内容哈希，宁可每次 304 复验，也不要让浏览器
+继续跑部署前的旧 bundle（曾因此出现「代码已修好、页面仍报旧错」）。部署完刷新即生效，必要时硬刷新。
 
 ## 图床
 
