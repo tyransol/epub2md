@@ -20,8 +20,8 @@
   --ok: #37a97e;
   --bad: #e5496a;
   --r-lg: 26px; --r-md: 16px; --r-sm: 12px;
-  --shadow: 0 10px 24px rgba(255, 143, 177, .16), 0 2px 6px rgba(180, 140, 200, .10);
-  --shadow-sm: 0 4px 12px rgba(255, 143, 177, .14);
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, .85), 0 4px 10px rgba(190, 150, 200, .10), 0 14px 30px rgba(255, 143, 177, .16);
+  --shadow-sm: inset 0 1px 0 rgba(255, 255, 255, .85), 0 3px 8px rgba(255, 143, 177, .16);
 }
 
 /* ---------- 分节色板：每节一套强调色 ---------- */
@@ -207,19 +207,19 @@ button {
   padding: 11px 18px; min-height: 44px; border-radius: 999px; cursor: pointer;
   border: 2px solid var(--pink-line); background: #fff; color: var(--ink);
   font-size: 14px; font-family: inherit; font-weight: 600;
-  box-shadow: 0 3px 0 var(--pink-line);
+  box-shadow: 0 3px 0 var(--pink-line), inset 0 1px 0 rgba(255, 255, 255, .85);
   transition: transform .12s ease, box-shadow .12s ease, background .18s ease;
 }
 button:hover { background: var(--pink-soft); }
-button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--pink-line); }
-button:disabled { opacity: .5; cursor: not-allowed; box-shadow: 0 3px 0 var(--pink-line); }
+button:active { transform: translateY(2px) scale(.985); box-shadow: 0 1px 0 var(--pink-line), inset 0 1px 0 rgba(255, 255, 255, .85); }
+button:disabled { opacity: .5; cursor: not-allowed; box-shadow: 0 3px 0 var(--pink-line), inset 0 1px 0 rgba(255, 255, 255, .85); }
 button.primary {
   color: #fff; border-color: #ff9dbd;
   background-image: linear-gradient(180deg, #ffa9c6, var(--pink-deep));
-  box-shadow: 0 4px 0 #d9537d;
+  box-shadow: 0 4px 0 #d9537d, 0 9px 20px rgba(239, 98, 143, .24), inset 0 1px 0 rgba(255, 255, 255, .55);
 }
 button.primary:hover { background-image: linear-gradient(180deg, #ffb7ce, #f56d97); }
-button.primary:active { box-shadow: 0 2px 0 #d9537d; }
+button.primary:active { box-shadow: 0 2px 0 #d9537d, inset 0 1px 0 rgba(255, 255, 255, .55); }
 button.mini { font-size: 12px; padding: 8px 13px; min-height: 38px; border-radius: 999px; }
 button.big { width: 100%; font-size: 16px; min-height: 52px; }
 
@@ -277,6 +277,97 @@ a.link-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--pink-l
 .hint a.link-btn { margin: 4px 6px 0 0; }
 
 /* ===========================================================
+   启动页（纯 CSS 动画；无新增 id）
+   =========================================================== */
+html.no-splash .splash { display: none; }
+
+.splash {
+  position: fixed; inset: 0; z-index: 200; overflow: hidden;
+  display: grid; place-items: center; padding: 24px;
+  background:
+    radial-gradient(circle at 20% 16%, #ffd9e9 0 24%, transparent 56%),
+    radial-gradient(circle at 82% 10%, #d9ecff 0 22%, transparent 54%),
+    radial-gradient(circle at 76% 88%, #fff0c9 0 24%, transparent 56%),
+    linear-gradient(160deg, #fff4fa, #ffeef7 42%, #f6f0ff);
+  transition: opacity .4s ease, visibility 0s linear .4s;
+  animation: splashOut .5s ease 2s forwards;
+}
+@keyframes splashOut {
+  from { opacity: 1; visibility: visible; }
+  to   { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+/* 点「跳过 / 进入」立即淡出 */
+.splash:has(.splash-toggle:checked) {
+  animation: none; opacity: 0; visibility: hidden; pointer-events: none;
+}
+.splash-toggle { position: absolute; width: 0; height: 0; margin: 0; opacity: 0; pointer-events: none; }
+
+.splash-skip {
+  position: absolute; top: calc(16px + env(safe-area-inset-top)); right: 18px;
+  padding: 9px 18px; border-radius: 999px; cursor: pointer;
+  font-size: 13px; font-weight: 700; color: var(--pink-deep);
+  background: rgba(255, 255, 255, .82); border: 2px solid var(--pink-line);
+  box-shadow: 0 3px 0 var(--pink-line), inset 0 1px 0 rgba(255, 255, 255, .9);
+  transition: transform .12s ease, background .18s ease;
+}
+.splash-skip:active { transform: translateY(2px); }
+
+.splash-inner { position: relative; text-align: center; max-width: 560px; }
+.splash-badge {
+  display: inline-grid; place-items: center; width: 104px; height: 104px;
+  font-size: 52px; line-height: 1; border-radius: 34px;
+  background: #fff; border: 3px solid var(--pink-line);
+  box-shadow: 0 9px 0 rgba(255, 143, 177, .26), 0 20px 44px rgba(180, 140, 200, .30), inset 0 3px 0 #fff;
+  animation: splashPop .72s cubic-bezier(.22, 1.25, .36, 1) both;
+}
+.splash-title {
+  margin: 28px 0 8px; font-size: 38px; font-weight: 800; letter-spacing: .6px;
+  background: linear-gradient(94deg, var(--pink-deep), #b98cff 55%, #65c8d8);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: splashRise .6s ease .22s both;
+}
+.splash-title .arrow { color: var(--pink); -webkit-text-fill-color: var(--pink); }
+.splash-sub {
+  margin: 0 0 30px; color: var(--ink-soft); font-size: 14px;
+  animation: splashRise .6s ease .38s both;
+}
+.splash-enter {
+  display: inline-block; cursor: pointer; padding: 15px 40px; border-radius: 999px;
+  font-size: 15.5px; font-weight: 700; color: #fff;
+  background-image: linear-gradient(180deg, #ffa9c6, var(--pink-deep));
+  border: 2px solid #ff9dbd;
+  box-shadow: 0 6px 0 #d9537d, 0 14px 30px rgba(239, 98, 143, .32), inset 0 1px 0 rgba(255, 255, 255, .55);
+  animation: splashRise .6s ease .52s both;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.splash-enter:active { transform: translateY(3px); box-shadow: 0 2px 0 #d9537d, inset 0 1px 0 rgba(255, 255, 255, .55); }
+
+/* 启动页漂浮贴纸 */
+.splash-sticker {
+  position: absolute; font-size: 30px; opacity: .9; pointer-events: none;
+  animation: splashFloat 4.5s ease-in-out infinite;
+}
+.splash-sticker.sl1 { left: -6%;   top: -8%;    --rot: -14deg; color: #f5a8c6; }
+.splash-sticker.sl2 { right: -4%;  top: -2%;    --rot: 12deg;  color: #b79cff; animation-delay: .5s; }
+.splash-sticker.sl3 { left: -2%;   bottom: -6%; --rot: 8deg;   color: #6fd3b8; animation-delay: 1s; }
+.splash-sticker.sl4 { right: -6%;  bottom: -10%; --rot: -10deg; color: #f3c453; animation-delay: 1.4s; }
+
+@keyframes splashPop { from { opacity: 0; transform: scale(.55) rotate(-18deg); } to { opacity: 1; transform: scale(1) rotate(-5deg); } }
+@keyframes splashRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes splashFloat { 0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); } 50% { transform: translateY(-13px) rotate(var(--rot, 0deg)); } }
+
+/* 页头漂浮装饰贴纸 */
+.hero-deco {
+  position: absolute; font-size: 24px; opacity: .75; pointer-events: none;
+  animation: heroFloat 5.5s ease-in-out infinite;
+}
+.hero-deco.d1 { left: 4%;    top: 16px;   --rot: -12deg; color: #f5a8c6; }
+.hero-deco.d2 { right: 5%;   top: 34px;   --rot: 10deg;  color: #b79cff; animation-delay: .7s; }
+.hero-deco.d3 { right: 13%;  bottom: 4px; --rot: 6deg;   color: #6fd3b8; animation-delay: 1.3s; }
+.hero-sticker { animation: heroFloat 6s ease-in-out infinite; }
+@keyframes heroFloat { 0%, 100% { transform: translateY(0) rotate(var(--rot, -4deg)); } 50% { transform: translateY(-9px) rotate(var(--rot, -4deg)); } }
+
+/* ===========================================================
    全平台适配：窄屏单列堆叠、触控尺寸、安全区、吸底操作栏
    =========================================================== */
 @media (max-width: 680px) {
@@ -312,6 +403,14 @@ a.link-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--pink-l
     -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   }
   .go-dock button.big { box-shadow: 0 5px 0 #d9537d, 0 10px 22px rgba(239, 98, 143, .28); }
+
+  /* 启动页窄屏收敛尺寸；页头装饰贴纸在窄屏隐藏，避免压到标题 */
+  .hero-deco { display: none; }
+  .splash-inner { max-width: 100%; }
+  .splash-badge { width: 84px; height: 84px; font-size: 42px; border-radius: 28px; }
+  .splash-title { font-size: 27px; margin: 22px 0 6px; }
+  .splash-sub { font-size: 13px; margin-bottom: 24px; }
+  .splash-sticker { font-size: 24px; }
 }
 
 @media (hover: none) {
@@ -320,7 +419,9 @@ a.link-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--pink-l
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+  * { transition: none !important; animation: none !important; }
+  /* 动画被禁用后启动页不会自动消失，直接不显示 */
+  .splash { display: none !important; }
 }
 
 /* ===========================================================

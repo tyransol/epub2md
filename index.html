@@ -7,10 +7,32 @@
 <meta name="color-scheme" content="light">
 <title>EPUB → Markdown · Frontmatter 构造器</title>
 <link rel="stylesheet" href="./styles.css">
+<script>
+/* 启动页只在本次会话首次出现；想让每次刷新都播，删掉这一段即可 */
+try { if (sessionStorage.getItem('epub2md.splash') === 'done') document.documentElement.classList.add('no-splash'); } catch (e) {}
+</script>
 </head>
 <body>
+<!-- 启动页：纯 CSS 动画，无新增 id；用 label 内嵌 checkbox 触发跳过 -->
+<div class="splash">
+  <label class="splash-skip" aria-label="跳过启动动画"><input type="checkbox" class="splash-toggle" tabindex="-1">跳过 ›</label>
+  <div class="splash-inner">
+    <span class="splash-sticker sl1" aria-hidden="true">✿</span>
+    <span class="splash-sticker sl2" aria-hidden="true">✦</span>
+    <span class="splash-sticker sl3" aria-hidden="true">♡</span>
+    <span class="splash-sticker sl4" aria-hidden="true">★</span>
+    <div class="splash-badge">📚</div>
+    <div class="splash-title">EPUB <span class="arrow">→</span> Markdown</div>
+    <p class="splash-sub">一书一文件 · 目录锚点 · Frontmatter 按主题规范构造</p>
+    <label class="splash-enter" aria-label="进入工具"><input type="checkbox" class="splash-toggle" tabindex="-1">进入 ›</label>
+  </div>
+</div>
+
 <div class="wrap">
   <header class="hero">
+    <span class="hero-deco d1" aria-hidden="true">✿</span>
+    <span class="hero-deco d2" aria-hidden="true">✦</span>
+    <span class="hero-deco d3" aria-hidden="true">♡</span>
     <div class="hero-sticker">📚</div>
     <h1>EPUB <span class="arrow">→</span> Markdown</h1>
     <p class="sub">一书一文件 · 目录锚点 · 封面与插图走图床 · <strong>Frontmatter 按主题规范构造</strong></p>
@@ -207,6 +229,22 @@
     </div>
   </section>
 </div>
+<script>
+/* 启动页播完（或用户点跳过）后，标记本会话已看过 */
+(function () {
+  var root = document.documentElement;
+  var s = document.querySelector('.splash');
+  if (!s || root.classList.contains('no-splash')) return;
+  var mark = function (e) {
+    if (e && e.type === 'animationend' && e.target !== s) return;
+    try { sessionStorage.setItem('epub2md.splash', 'done'); } catch (err) {}
+    s.removeEventListener('animationend', mark);
+    s.removeEventListener('change', mark);
+  };
+  s.addEventListener('animationend', mark);
+  s.addEventListener('change', mark);
+})();
+</script>
 <script type="module" src="./app.js"></script>
 </body>
 </html>
