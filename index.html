@@ -13,8 +13,9 @@ try { if (sessionStorage.getItem('epub2md.splash') === 'done') document.document
 </script>
 </head>
 <body>
-<!-- 启动页：纯 CSS 自绘的赛博 HUD 动画；无新增 id，靠 label 内嵌 checkbox 触发跳过 -->
+<!-- 启动页：以视频为主画面，纯 CSS 赛博 HUD 作为视频不可用时的兜底；无新增 id -->
 <div class="splash">
+  <video class="splash-video" src="./intro.mp4" muted playsinline autoplay preload="auto" aria-hidden="true"></video>
   <div class="splash-grid" aria-hidden="true"></div>
   <div class="splash-scan" aria-hidden="true"></div>
   <div class="splash-frame" aria-hidden="true"></div>
@@ -249,19 +250,44 @@ try { if (sessionStorage.getItem('epub2md.splash') === 'done') document.document
   </section>
 </div>
 <script>
-/* 启动页播完（或用户点跳过）后，标记本会话已看过 */
+/* 启动页：视频能播就以视频为主画面、播完自动淡出；不能播则退回纯 CSS 版。两种情况都会标记本会话已看过 */
 (function () {
   var root = document.documentElement;
   var s = document.querySelector('.splash');
   if (!s || root.classList.contains('no-splash')) return;
-  var mark = function (e) {
-    if (e && e.type === 'animationend' && e.target !== s) return;
+
+  var settled = false;
+  var timer = null;
+  function settle() {
+    if (settled) return;
+    settled = true;
+    if (timer) clearTimeout(timer);
     try { sessionStorage.setItem('epub2md.splash', 'done'); } catch (err) {}
-    s.removeEventListener('animationend', mark);
-    s.removeEventListener('change', mark);
-  };
-  s.addEventListener('animationend', mark);
-  s.addEventListener('change', mark);
+    s.removeEventListener('animationend', onAnimEnd);
+    s.removeEventListener('change', settle);
+  }
+  function onAnimEnd(e) { if (e.target === s) settle(); }
+  /* 程序化勾选：同时触发 :has 淡出与上面的 settle */
+  function exit() {
+    var t = s.querySelector('.splash-toggle');
+    if (t) { t.checked = true; t.dispatchEvent(new Event('change', { bubbles: true })); }
+    settle();
+  }
+
+  var v = s.querySelector('.splash-video');
+  if (v) {
+    v.muted = true;                                  // 保证自动播放策略下也能播
+    var reveal = function () { s.classList.add('has-video'); };
+    if (v.readyState >= 2) reveal();
+    v.addEventListener('loadeddata', reveal);
+    v.addEventListener('canplay', reveal);
+    v.addEventListener('ended', exit);               // 视频播完即退出
+    // 兜底：视频卡住/加载失败时，仍旧退出，避免挡住页面
+    timer = setTimeout(exit, 9000);
+  }
+
+  s.addEventListener('animationend', onAnimEnd);
+  s.addEventListener('change', settle);
 })();
 </script>
 <script type="module" src="./app.js"></script>
