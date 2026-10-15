@@ -1,6 +1,6 @@
 /* ===========================================================
-   EPUB → Markdown · 可爱风皮肤
-   纯 CSS 实现，不引外部字体 / CDN（本项目的既有约定）
+   EPUB → Markdown · 可爱风皮肤 v2（分节 + 节奏）
+   纯 CSS 实现，不引外部字体 / CDN / 图片（本项目的既有约定）
    =========================================================== */
 
 :root {
@@ -23,6 +23,12 @@
   --shadow: 0 10px 24px rgba(255, 143, 177, .16), 0 2px 6px rgba(180, 140, 200, .10);
   --shadow-sm: 0 4px 12px rgba(255, 143, 177, .14);
 }
+
+/* ---------- 分节色板：每节一套强调色 ---------- */
+.sec[data-tone="pink"]  { --tone: var(--pink);  --tone-deep: var(--pink-deep); --tone-soft: var(--pink-soft); --tone-line: var(--pink-line); }
+.sec[data-tone="lav"]   { --tone: #b79cff;      --tone-deep: #8f72e0;       --tone-soft: #f1ebff;        --tone-line: #e0d4ff; }
+.sec[data-tone="mint"]  { --tone: var(--mint);  --tone-deep: #35a488;       --tone-soft: #e2f8ef;        --tone-line: #b9ecd8; }
+.sec[data-tone="lemon"] { --tone: #f3c453;      --tone-deep: #cf9a1f;       --tone-soft: #fff3d6;        --tone-line: #ffe2a8; }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -64,28 +70,92 @@ h1 .arrow { color: var(--pink); -webkit-text-fill-color: var(--pink); }
 .sub { margin: 0 auto; max-width: 520px; color: var(--ink-soft); font-size: 13px; }
 .sub strong { color: var(--pink-deep); }
 
+/* 页头流程条：让「四步」在开头就有交代 */
+.hero-flow {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  flex-wrap: wrap; margin: 16px 0 4px;
+}
+.flow-chip {
+  font-size: 11.5px; font-weight: 700; padding: 5px 11px; border-radius: 999px;
+  background: #fff; border: 2px solid var(--line); color: var(--ink-soft);
+}
+.flow-chip[data-tone="pink"]  { border-color: var(--pink-line); background: var(--pink-soft); color: var(--pink-deep); }
+.flow-chip[data-tone="lav"]   { border-color: #e0d4ff; background: #f1ebff; color: #8f72e0; }
+.flow-chip[data-tone="mint"]  { border-color: #b9ecd8; background: #e2f8ef; color: #35a488; }
+.flow-chip[data-tone="lemon"] { border-color: #ffe2a8; background: #fff3d6; color: #cf9a1f; }
+.flow-arrow { color: #d9c6d3; font-weight: 700; }
+
+/* ---------- 分节标题 ---------- */
+.sec { position: relative; }
+.sec-head {
+  display: flex; align-items: center; gap: 12px;
+  margin: 4px 2px 12px;
+}
+.sec-head::after {
+  content: ""; margin-left: auto; font-size: 20px; line-height: 1;
+  opacity: .75; transform: rotate(-8deg);
+}
+.sec[data-tone="pink"]  .sec-head::after { content: "📚"; }
+.sec[data-tone="lav"]   .sec-head::after { content: "✍️"; }
+.sec[data-tone="mint"]  .sec-head::after { content: "🔖"; }
+.sec[data-tone="lemon"] .sec-head::after { content: "✨"; }
+
+.sec-num {
+  flex: 0 0 auto; display: inline-grid; place-items: center;
+  width: 38px; height: 38px; border-radius: 14px;
+  font: 800 17px/1 inherit; color: #fff;
+  background-image: linear-gradient(160deg, var(--tone), var(--tone-deep));
+  border: 2px solid #fff;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, .10), 0 8px 18px rgba(180, 140, 200, .22);
+  transform: rotate(-3deg);
+}
+.sec-txt { min-width: 0; }
+.sec-txt h2 {
+  margin: 0; font-size: 18px; letter-spacing: .4px;
+  color: var(--tone-deep);
+}
+.sec-txt p { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-soft); }
+
+/* 分节之间的波浪 / 圆点分隔线，制造视觉断点 */
+.sec-divider {
+  height: 16px; margin: 20px 0 18px;
+  background-image:
+    radial-gradient(circle at 8px 8px, var(--pink-line) 3.2px, transparent 3.6px),
+    radial-gradient(circle at 24px 8px, #cbb6ff 3.2px, transparent 3.6px),
+    radial-gradient(circle at 40px 8px, #b9ecd8 3.2px, transparent 3.6px);
+  background-size: 48px 16px;
+  background-repeat: repeat-x;
+  background-position: center;
+  opacity: .9;
+}
+
 /* ---------- 卡片 ---------- */
 .card {
   position: relative; background: var(--panel); border: 2px solid var(--line);
   border-radius: var(--r-lg); padding: 18px; margin-bottom: 16px; box-shadow: var(--shadow);
 }
+.sec .card { border-color: var(--tone-line, var(--line)); }
 .card-title {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   font-size: 15px; font-weight: 700; margin-bottom: 12px;
 }
 .card-title .ico {
   display: inline-grid; place-items: center; width: 30px; height: 30px; flex: 0 0 auto;
-  font-size: 16px; border-radius: 12px; background: var(--pink-soft); border: 2px solid var(--pink-line);
+  font-size: 16px; border-radius: 12px;
+  background: var(--tone-soft, var(--pink-soft)); border: 2px solid var(--tone-line, var(--pink-line));
 }
 
-/* 可折叠卡片（核对信息） */
+/* 可折叠卡片 */
 details.card > summary.card-title { cursor: pointer; list-style: none; margin-bottom: 0; }
 details.card > summary.card-title::-webkit-details-marker { display: none; }
 details.card > summary.card-title::after {
-  content: "▾"; margin-left: auto; color: var(--pink); font-size: 13px; transition: transform .18s ease;
+  content: "▾"; margin-left: auto; color: var(--tone-deep, var(--pink)); font-size: 13px;
+  transition: transform .18s ease;
 }
 details.card[open] > summary.card-title { margin-bottom: 12px; }
 details.card[open] > summary.card-title::after { transform: rotate(180deg); }
+/* 折叠态给一个「可点开」的暗示 */
+details.card:not([open]) > summary.card-title { padding: 2px 0; }
 
 /* ---------- 表单 ---------- */
 label { display: block; font-size: 13px; color: var(--ink-soft); margin: 14px 0 6px; }
@@ -103,7 +173,7 @@ input[type=text], input[type=date], input[type=file], select, textarea {
 input::placeholder, textarea::placeholder { color: #c3b3bd; }
 textarea { resize: vertical; min-height: 76px; line-height: 1.7; }
 input:focus, select:focus, textarea:focus {
-  outline: none; border-color: var(--pink); box-shadow: 0 0 0 4px var(--pink-soft);
+  outline: none; border-color: var(--tone, var(--pink)); box-shadow: 0 0 0 4px var(--tone-soft, var(--pink-soft));
 }
 input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--pink); }
 input[type=date] { min-height: 44px; }
@@ -157,6 +227,9 @@ button.big { width: 100%; font-size: 16px; min-height: 52px; }
 .row-top { margin-top: 14px; }
 .row-top > button.primary { flex: 1 1 160px; }
 
+/* 转换节的开始按钮：桌面端留在卡片内，窄屏见下方吸底规则 */
+.go-dock { margin-bottom: 6px; }
+
 /* ---------- 派生：标签 / 日志 / 结果 ---------- */
 .pill {
   display: inline-block; font-size: 12px; padding: 5px 12px; border-radius: 999px;
@@ -204,16 +277,22 @@ a.link-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--pink-l
 .hint a.link-btn { margin: 4px 6px 0 0; }
 
 /* ===========================================================
-   全平台适配：窄屏单列堆叠、触控尺寸、安全区
+   全平台适配：窄屏单列堆叠、触控尺寸、安全区、吸底操作栏
    =========================================================== */
 @media (max-width: 680px) {
   body {
-    padding: 16px max(12px, env(safe-area-inset-left)) 48px max(12px, env(safe-area-inset-right));
+    padding: 16px max(12px, env(safe-area-inset-left)) 104px max(12px, env(safe-area-inset-right));
   }
   .grid2, .grid3 { grid-template-columns: 1fr; gap: 0; }
   h1 { font-size: 23px; }
   .hero { padding: 2px 0 16px; }
+  .hero-flow { margin: 12px 0 2px; }
   .card { padding: 15px; border-radius: 22px; }
+  .sec-head { gap: 10px; }
+  .sec-num { width: 34px; height: 34px; font-size: 15px; }
+  .sec-txt h2 { font-size: 16.5px; }
+  .sec-head::after { font-size: 17px; }
+  .sec-divider { margin: 16px 0 14px; }
   /* 16px 可避免 iOS 聚焦时自动放大页面 */
   input[type=text], input[type=date], select, textarea { font-size: 16px; }
   .row > button { flex: 1 1 auto; }
@@ -221,6 +300,18 @@ a.link-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--pink-l
   button.mini { min-height: 44px; padding: 10px 14px; }
   button.big { font-size: 15px; }
   #log { max-height: 200px; }
+
+  /* 开始转换常驻底部，减少长滚动疲劳 */
+  .go-dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    margin: 0;
+    padding: 12px max(12px, env(safe-area-inset-left))
+             calc(12px + env(safe-area-inset-bottom))
+             max(12px, env(safe-area-inset-right));
+    background: linear-gradient(180deg, rgba(255, 247, 251, 0) 0%, rgba(255, 247, 251, .94) 46%);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .go-dock button.big { box-shadow: 0 5px 0 #d9537d, 0 10px 22px rgba(239, 98, 143, .28); }
 }
 
 @media (hover: none) {

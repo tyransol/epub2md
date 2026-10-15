@@ -14,130 +14,198 @@
     <div class="hero-sticker">📚</div>
     <h1>EPUB <span class="arrow">→</span> Markdown</h1>
     <p class="sub">一书一文件 · 目录锚点 · 封面与插图走图床 · <strong>Frontmatter 按主题规范构造</strong></p>
+    <div class="hero-flow">
+      <span class="flow-chip" data-tone="pink">1 选书</span>
+      <span class="flow-arrow">›</span>
+      <span class="flow-chip" data-tone="lav">2 填信息</span>
+      <span class="flow-arrow">›</span>
+      <span class="flow-chip" data-tone="mint">3 检索核对</span>
+      <span class="flow-arrow">›</span>
+      <span class="flow-chip" data-tone="lemon">4 转换</span>
+    </div>
   </header>
 
-  <div class="card">
-    <div class="card-title"><span class="ico">📖</span>EPUB 文件<span class="inline-hint">单本</span></div>
-    <input type="file" id="epub" accept=".epub,application/epub+zip">
-  </div>
-
-  <div class="card">
-    <div class="card-title"><span class="ico">🧷</span>Frontmatter 方案</div>
-
-    <div class="grid2">
-      <div class="fld">
-        <label for="profile">输出规范<span class="req">*</span></label>
-        <select id="profile">
-          <option value="shirone">Shirone（Astro 主题：image / category / published）</option>
-          <option value="generic">Hexo（通用兼容：cover / categories / date）</option>
-        </select>
+  <!-- ============ 第 1 节 · 选书 ============ -->
+  <section class="sec" data-tone="pink">
+    <div class="sec-head">
+      <span class="sec-num">1</span>
+      <div class="sec-txt">
+        <h2>选一本书</h2>
+        <p>单本 EPUB，封面与插图会自动走图床</p>
       </div>
-      <div class="fld">
-        <label for="timePrecision">日期精度</label>
-        <select id="timePrecision">
-          <option value="datetime">日期 + 时分秒（YYYY-MM-DD HH:MM:SS，可稳定去重）</option>
-          <option value="date">仅日期（YYYY-MM-DD）</option>
-        </select>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="ico">📖</span>EPUB 文件<span class="inline-hint">单本</span></div>
+      <input type="file" id="epub" accept=".epub,application/epub+zip">
+    </div>
+  </section>
+
+  <div class="sec-divider"></div>
+
+  <!-- ============ 第 2 节 · 填信息 ============ -->
+  <section class="sec" data-tone="lav">
+    <div class="sec-head">
+      <span class="sec-num">2</span>
+      <div class="sec-txt">
+        <h2>填书目信息</h2>
+        <p>决定 frontmatter 如何生成，带 <span class="req">*</span> 为必填</p>
       </div>
     </div>
 
-    <div class="hint">Shirone 方案不含 author / publisher 等 Hexo 遗留字段，作者信息写入正文。</div>
-    <div class="field-note" id="profileFields"></div>
+    <div class="card">
+      <div class="card-title"><span class="ico">🧷</span>Frontmatter 方案</div>
 
-    <div class="grid2">
-      <div class="fld">
-        <label for="title">书名 / 标题 title<span class="req">*</span></label>
-        <input type="text" id="title" placeholder="义妹生活 第一卷（留空则取 EPUB 内书名）">
+      <div class="grid2">
+        <div class="fld">
+          <label for="profile">输出规范<span class="req">*</span></label>
+          <select id="profile">
+            <option value="shirone">Shirone（Astro 主题：image / category / published）</option>
+            <option value="generic">Hexo（通用兼容：cover / categories / date）</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="timePrecision">日期精度</label>
+          <select id="timePrecision">
+            <option value="datetime">日期 + 时分秒（YYYY-MM-DD HH:MM:SS，可稳定去重）</option>
+            <option value="date">仅日期（YYYY-MM-DD）</option>
+          </select>
+        </div>
       </div>
-      <div class="fld">
-        <label for="series">系列名 category<span class="inline-hint">留空自动从书名推导</span></label>
-        <input type="text" id="series" placeholder="义妹生活">
+
+      <div class="hint">Shirone 方案不含 author / publisher 等 Hexo 遗留字段，作者信息写入正文。</div>
+      <div class="field-note" id="profileFields"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="ico">🏷️</span>书名与作者</div>
+
+      <div class="grid2">
+        <div class="fld">
+          <label for="title">书名 / 标题 title<span class="req">*</span></label>
+          <input type="text" id="title" placeholder="义妹生活 第一卷（留空则取 EPUB 内书名）">
+        </div>
+        <div class="fld">
+          <label for="series">系列名 category<span class="inline-hint">留空自动从书名推导</span></label>
+          <input type="text" id="series" placeholder="义妹生活">
+        </div>
+        <div class="fld">
+          <label for="author">作者 author<span class="inline-hint">写入正文，Shirone 不放入 frontmatter</span></label>
+          <input type="text" id="author" placeholder="三河ごーすと、hiten（留空则取 EPUB 内作者）">
+        </div>
+        <div class="fld">
+          <label for="japaneseTitle">日文原名<span class="req">*</span></label>
+          <input type="text" id="japaneseTitle" placeholder="義妹生活">
+        </div>
       </div>
-      <div class="fld">
-        <label for="author">作者 author<span class="inline-hint">写入正文，Shirone 不放入 frontmatter</span></label>
-        <input type="text" id="author" placeholder="三河ごーすと、hiten（留空则取 EPUB 内作者）">
-      </div>
-      <div class="fld">
-        <label for="japaneseTitle">日文原名<span class="req">*</span></label>
-        <input type="text" id="japaneseTitle" placeholder="義妹生活">
+
+      <label for="releaseDate">日文版发售日<span class="req">*</span><span class="inline-hint">published = 次日 + 派生时分秒</span></label>
+      <input type="date" id="releaseDate">
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="ico">📝</span>简介与标签</div>
+
+      <label for="description">简介 description<span class="inline-hint">留空则取 EPUB 内 dc:description</span></label>
+      <textarea id="description" rows="3" placeholder="用于 Shirone 的 description 字段"></textarea>
+
+      <label for="tags">补充标签 tags<span class="inline-hint">逗号分隔，自动追加「轻小说 / 系列名 / 日文原名」</span></label>
+      <input type="text" id="tags" placeholder="恋爱, 校园">
+
+      <label class="check"><input type="checkbox" id="pinned"> 置顶 pinned</label>
+
+      <label for="coverUrlOverride">手动封面 URL<span class="inline-hint">可选，仅当 EPUB 内没有封面图时填图床直链</span></label>
+      <input type="text" id="coverUrlOverride" placeholder="https://tc.iiiiii.cc.cd/file/…">
+    </div>
+  </section>
+
+  <div class="sec-divider"></div>
+
+  <!-- ============ 第 3 节 · 检索核对 ============ -->
+  <section class="sec" data-tone="mint">
+    <div class="sec-head">
+      <span class="sec-num">3</span>
+      <div class="sec-txt">
+        <h2>检索与核对</h2>
+        <p>拿公开接口凑齐线索，再人工确认来源</p>
       </div>
     </div>
 
-    <label for="releaseDate">日文版发售日<span class="req">*</span><span class="inline-hint">published = 次日 + 派生时分秒</span></label>
-    <input type="date" id="releaseDate">
+    <details class="card">
+      <summary class="card-title"><span class="ico">🔎</span>书目信息自动检索<span class="inline-hint">NDL Search / openBD / 维基 · 全部为公开接口</span></summary>
 
-    <label for="description">简介 description<span class="inline-hint">留空则取 EPUB 内 dc:description</span></label>
-    <textarea id="description" rows="3" placeholder="用于 Shirone 的 description 字段"></textarea>
-
-    <label for="tags">补充标签 tags<span class="inline-hint">逗号分隔，自动追加「轻小说 / 系列名 / 日文原名」</span></label>
-    <input type="text" id="tags" placeholder="恋爱, 校园">
-
-    <label class="check"><input type="checkbox" id="pinned"> 置顶 pinned</label>
-
-    <label for="coverUrlOverride">手动封面 URL<span class="inline-hint">可选，仅当 EPUB 内没有封面图时填图床直链</span></label>
-    <input type="text" id="coverUrlOverride" placeholder="https://tc.iiiiii.cc.cd/file/…">
-  </div>
-
-  <div class="card">
-    <div class="card-title"><span class="ico">🔎</span>书目信息自动检索<span class="inline-hint">NDL Search / openBD / 维基 · 全部为公开接口</span></div>
-
-    <div class="grid3">
-      <div class="fld">
-        <label for="lkTitle">检索书名<span class="inline-hint">留空取上方 title</span></label>
-        <input type="text" id="lkTitle" placeholder="义妹生活">
+      <div class="grid3">
+        <div class="fld">
+          <label for="lkTitle">检索书名<span class="inline-hint">留空取上方 title</span></label>
+          <input type="text" id="lkTitle" placeholder="义妹生活">
+        </div>
+        <div class="fld">
+          <label for="lkAuthor">作者<span class="inline-hint">可选，用于卷次排序</span></label>
+          <input type="text" id="lkAuthor" placeholder="三河ごーすと">
+        </div>
+        <div class="fld">
+          <label for="lkIsbn">ISBN<span class="inline-hint">可选，台版也能先试一跳</span></label>
+          <input type="text" id="lkIsbn" placeholder="978-4-04-684555-9">
+        </div>
       </div>
-      <div class="fld">
-        <label for="lkAuthor">作者<span class="inline-hint">可选，用于卷次排序</span></label>
-        <input type="text" id="lkAuthor" placeholder="三河ごーすと">
+
+      <div class="row row-top">
+        <button id="lkFromEpub" class="mini">从 EPUB 读取线索</button>
+        <button id="lkGo" class="primary">检索书目</button>
+        <span id="lkInfo" class="pill">未检索</span>
       </div>
-      <div class="fld">
-        <label for="lkIsbn">ISBN<span class="inline-hint">可选，台版也能先试一跳</span></label>
-        <input type="text" id="lkIsbn" placeholder="978-4-04-684555-9">
+      <div class="hint">NDL（国立国会図書館）有并发限流，失败会明确报错、不会被当成「查无此书」。<br>
+        日亚没有公开接口且禁止抓取，只提供外链供人工核对。出版日期往往只到「年月」，会标注精度，日部分需你确认。</div>
+      <div id="lkLog"></div>
+      <div id="lkResult"></div>
+    </details>
+
+    <details class="card">
+      <summary class="card-title"><span class="ico">�</span>核对信息<span class="inline-hint">不写入文件，仅用于人工核对来源</span></summary>
+
+      <div class="grid2">
+        <div class="fld">
+          <label for="publisher">出版社</label>
+          <input type="text" id="publisher" placeholder="KADOKAWA / 電撃文庫">
+        </div>
+        <div class="fld">
+          <label for="isbn">ISBN</label>
+          <input type="text" id="isbn" placeholder="978-4-04-865808-9">
+        </div>
+      </div>
+
+      <label for="sourceUrl">书目来源 URL</label>
+      <input type="text" id="sourceUrl" placeholder="https://…">
+    </details>
+  </section>
+
+  <div class="sec-divider"></div>
+
+  <!-- ============ 第 4 节 · 转换 ============ -->
+  <section class="sec" data-tone="lemon">
+    <div class="sec-head">
+      <span class="sec-num">4</span>
+      <div class="sec-txt">
+        <h2>转换与自检</h2>
+        <p>生成 Markdown，并核对产物是否符合规范</p>
       </div>
     </div>
 
-    <div class="row row-top">
-      <button id="lkFromEpub" class="mini">从 EPUB 读取线索</button>
-      <button id="lkGo" class="primary">检索书目</button>
-      <span id="lkInfo" class="pill">未检索</span>
-    </div>
-    <div class="hint">NDL（国立国会図書館）有并发限流，失败会明确报错、不会被当成「查无此书」。<br>
-      日亚没有公开接口且禁止抓取，只提供外链供人工核对。出版日期往往只到「年月」，会标注精度，日部分需你确认。</div>
-    <div id="lkLog"></div>
-    <div id="lkResult"></div>
-  </div>
-
-  <details class="card" open>
-    <summary class="card-title"><span class="ico">📝</span>核对信息<span class="inline-hint">不写入文件，仅用于人工核对来源</span></summary>
-
-    <div class="grid2">
-      <div class="fld">
-        <label for="publisher">出版社</label>
-        <input type="text" id="publisher" placeholder="KADOKAWA / 電撃文庫">
+    <div class="card">
+      <div class="card-title"><span class="ico">✨</span>开始生成</div>
+      <div class="go-dock">
+        <button class="primary big" id="go">开始转换</button>
       </div>
-      <div class="fld">
-        <label for="isbn">ISBN</label>
-        <input type="text" id="isbn" placeholder="978-4-04-865808-9">
+      <div class="row row-top">
+        <span id="cacheInfo" class="pill">图片缓存 —</span>
+        <button id="clearCache" class="mini">清空缓存</button>
+        <button id="forget" class="mini">忘记字段</button>
       </div>
+      <div id="log"></div>
+      <div id="result"></div>
+      <div class="hint">字段与图片缓存记在本机浏览器；图片按内容哈希缓存，同一本书重跑不会重复上传。<br>
+        本页只做技术自检 —— 书目是否属实必须人工核对来源，程序不会替你断言。</div>
     </div>
-
-    <label for="sourceUrl">书目来源 URL</label>
-    <input type="text" id="sourceUrl" placeholder="https://…">
-  </details>
-
-  <div class="card">
-    <div class="card-title"><span class="ico">✨</span>转换与自检</div>
-    <button class="primary big" id="go">开始转换</button>
-    <div class="row row-top">
-      <span id="cacheInfo" class="pill">图片缓存 —</span>
-      <button id="clearCache" class="mini">清空缓存</button>
-      <button id="forget" class="mini">忘记字段</button>
-    </div>
-    <div id="log"></div>
-    <div id="result"></div>
-    <div class="hint">字段与图片缓存记在本机浏览器；图片按内容哈希缓存，同一本书重跑不会重复上传。<br>
-      本页只做技术自检 —— 书目是否属实必须人工核对来源，程序不会替你断言。</div>
-  </div>
+  </section>
 </div>
 <script type="module" src="./app.js"></script>
 </body>
