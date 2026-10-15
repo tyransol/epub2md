@@ -302,27 +302,6 @@ html.no-splash .splash { display: none; }
 }
 .splash-toggle { position: absolute; width: 0; height: 0; margin: 0; opacity: 0; pointer-events: none; }
 
-/* 视频主画面：能播才显现；播不了（或离线）就露出下面那层纯 CSS 兜底 */
-.splash-video {
-  position: absolute; inset: 0; z-index: 0;
-  width: 100%; height: 100%; object-fit: cover; background: #03070d;
-  opacity: 0; transition: opacity .4s ease;
-}
-.splash.has-video .splash-video { opacity: 1; }
-/* 视频接管画面后，CSS 自绘的装饰层全部让位；SKIP / ENTER 仍压在视频之上 */
-.splash.has-video .splash-grid,
-.splash.has-video .splash-scan,
-.splash.has-video .splash-frame,
-.splash.has-video .splash-brand,
-.splash.has-video .splash-ver,
-.splash.has-video .splash-side,
-.splash.has-video .splash-core,
-.splash.has-video .splash-art,
-.splash.has-video .splash-term,
-.splash.has-video .splash-foot { display: none; }
-/* 有视频时，把「自动淡出」的安全兜底推迟到视频全长（约 7.05s）之后 */
-.splash.has-video { animation-duration: .6s; animation-delay: 7.6s; }
-
 /* 网格 + 滚动扫描线 */
 .splash-grid {
   position: absolute; inset: -6%;
