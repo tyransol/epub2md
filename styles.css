@@ -25,10 +25,10 @@
 }
 
 /* ---------- 分节色板：每节一套强调色 ---------- */
-.sec[data-tone="pink"]  { --tone: var(--pink);  --tone-deep: var(--pink-deep); --tone-soft: var(--pink-soft); --tone-line: var(--pink-line); }
-.sec[data-tone="lav"]   { --tone: #b79cff;      --tone-deep: #8f72e0;       --tone-soft: #f1ebff;        --tone-line: #e0d4ff; }
-.sec[data-tone="mint"]  { --tone: var(--mint);  --tone-deep: #35a488;       --tone-soft: #e2f8ef;        --tone-line: #b9ecd8; }
-.sec[data-tone="lemon"] { --tone: #f3c453;      --tone-deep: #cf9a1f;       --tone-soft: #fff3d6;        --tone-line: #ffe2a8; }
+.sec[data-tone="pink"]  { --tone: var(--pink);  --tone-deep: var(--pink-deep); --tone-soft: var(--pink-soft); --tone-wash: #fff2f8; --tone-line: var(--pink-line); }
+.sec[data-tone="lav"]   { --tone: #b79cff;      --tone-deep: #8f72e0;       --tone-soft: #f1ebff;        --tone-wash: #f8f4ff; --tone-line: #e0d4ff; }
+.sec[data-tone="mint"]  { --tone: var(--mint);  --tone-deep: #35a488;       --tone-soft: #e2f8ef;        --tone-wash: #f0fcf7; --tone-line: #b9ecd8; }
+.sec[data-tone="lemon"] { --tone: #f3c453;      --tone-deep: #cf9a1f;       --tone-soft: #fff3d6;        --tone-wash: #fffaee; --tone-line: #ffe2a8; }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -321,4 +321,62 @@ a.link-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--pink-l
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+}
+
+/* ===========================================================
+   宽屏适配（≥1000px）：加宽容器 + 分节同色系色块 + 多列卡片
+   只改样式层，HTML 标记与 id 契约完全不变
+   =========================================================== */
+@media (min-width: 1000px) {
+  body { padding: 34px 24px 84px; }
+
+  /* 容器放宽，消灭两侧大片留白 */
+  .wrap { max-width: 1040px; }
+
+  /* 页头放大，宽屏下不再单薄 */
+  .hero { padding: 14px 0 30px; }
+  .hero-sticker { font-size: 40px; padding: 14px 18px; border-radius: 26px; }
+  h1 { font-size: 36px; margin: 16px 0 8px; }
+  .sub { max-width: 640px; font-size: 14px; }
+  .hero-flow { margin: 20px 0 6px; gap: 8px; }
+  .flow-chip { font-size: 12.5px; padding: 6px 14px; }
+  .hero::after {
+    content: "✿ ・ ✦ ・ ♡"; display: block; margin-top: 14px;
+    letter-spacing: 9px; color: var(--pink); font-size: 13px; opacity: .55;
+  }
+
+  /* 每节变成同色系圆角色块，把宽出来的空间「用掉」而不是「空着」 */
+  .sec {
+    display: grid; gap: 16px 18px; align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 20px;
+    border-radius: 32px;
+    border: 2px solid var(--tone-line);
+    background:
+      radial-gradient(circle at 100% 0, var(--tone-soft) 0 26%, transparent 60%),
+      linear-gradient(180deg, var(--tone-wash), #fff 94%);
+    box-shadow: 0 14px 32px rgba(190, 150, 200, .12);
+  }
+  .sec > .sec-head { grid-column: 1 / -1; margin: 0 2px 2px; }
+  .sec > .card { margin-bottom: 0; }
+
+  .sec[data-tone="lav"],
+  .sec[data-tone="mint"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 第 2 节最后一张卡（简介与标签）通栏，避免第二行右侧留空 */
+  .sec[data-tone="lav"] > .card:last-of-type { grid-column: 1 / -1; }
+
+  .sec-head { gap: 14px; }
+  .sec-num { width: 44px; height: 44px; font-size: 19px; border-radius: 16px; }
+  .sec-txt h2 { font-size: 21px; }
+  .sec-txt p { font-size: 13px; }
+  .sec-head::after { font-size: 24px; }
+
+  .sec-divider { margin: 24px 0 22px; }
+
+  .card { padding: 20px; }
+
+  /* 选书卡通栏后，把文件选择器做成一块真正的大投放区 */
+  .sec[data-tone="pink"] > .card input[type=file] {
+    min-height: 90px; padding: 20px; font-size: 15px;
+  }
 }
