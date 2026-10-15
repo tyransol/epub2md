@@ -277,84 +277,209 @@ a.link-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--pink-l
 .hint a.link-btn { margin: 4px 6px 0 0; }
 
 /* ===========================================================
-   启动页（纯 CSS 动画；无新增 id）
+   启动页 · 赛博 / HUD 风（纯 CSS 自绘；无新增 id）
    =========================================================== */
 html.no-splash .splash { display: none; }
 
 .splash {
   position: fixed; inset: 0; z-index: 200; overflow: hidden;
-  display: grid; place-items: center; padding: 24px;
+  color: #bfe6ef;
+  font-family: ui-monospace, Menlo, Consolas, "PingFang SC", monospace;
   background:
-    radial-gradient(circle at 20% 16%, #ffd9e9 0 24%, transparent 56%),
-    radial-gradient(circle at 82% 10%, #d9ecff 0 22%, transparent 54%),
-    radial-gradient(circle at 76% 88%, #fff0c9 0 24%, transparent 56%),
-    linear-gradient(160deg, #fff4fa, #ffeef7 42%, #f6f0ff);
-  transition: opacity .4s ease, visibility 0s linear .4s;
-  animation: splashOut .5s ease 2s forwards;
+    radial-gradient(120% 90% at 76% 38%, rgba(46, 138, 176, .34), transparent 62%),
+    radial-gradient(80% 70% at 10% 8%, rgba(28, 92, 148, .22), transparent 60%),
+    linear-gradient(160deg, #03070d, #050c16 46%, #02060b);
+  transition: opacity .5s ease, visibility 0s linear .5s;
+  animation: splashOut .6s ease 3.6s forwards;
 }
 @keyframes splashOut {
   from { opacity: 1; visibility: visible; }
   to   { opacity: 0; visibility: hidden; pointer-events: none; }
 }
-/* 点「跳过 / 进入」立即淡出 */
+/* 点「SKIP / ENTER」立即淡出 */
 .splash:has(.splash-toggle:checked) {
   animation: none; opacity: 0; visibility: hidden; pointer-events: none;
 }
 .splash-toggle { position: absolute; width: 0; height: 0; margin: 0; opacity: 0; pointer-events: none; }
 
-.splash-skip {
-  position: absolute; top: calc(16px + env(safe-area-inset-top)); right: 18px;
-  padding: 9px 18px; border-radius: 999px; cursor: pointer;
-  font-size: 13px; font-weight: 700; color: var(--pink-deep);
-  background: rgba(255, 255, 255, .82); border: 2px solid var(--pink-line);
-  box-shadow: 0 3px 0 var(--pink-line), inset 0 1px 0 rgba(255, 255, 255, .9);
-  transition: transform .12s ease, background .18s ease;
+/* 网格 + 滚动扫描线 */
+.splash-grid {
+  position: absolute; inset: -6%;
+  background-image:
+    linear-gradient(rgba(94, 224, 216, .07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 224, 216, .07) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(72% 72% at 52% 45%, #000 38%, transparent 100%);
+  mask-image: radial-gradient(72% 72% at 52% 45%, #000 38%, transparent 100%);
+  animation: gridIn 1.1s ease both;
 }
-.splash-skip:active { transform: translateY(2px); }
+@keyframes gridIn { from { opacity: 0; transform: scale(1.05); } to { opacity: 1; transform: none; } }
+.splash-scan {
+  position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 3px);
+  mix-blend-mode: screen;
+}
+.splash-scan::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 20%;
+  background: linear-gradient(180deg, transparent, rgba(94, 224, 216, .13), transparent);
+  animation: scanSweep 3.2s linear infinite;
+}
+@keyframes scanSweep { from { top: -24%; } to { top: 104%; } }
 
-.splash-inner { position: relative; text-align: center; max-width: 560px; }
-.splash-badge {
-  display: inline-grid; place-items: center; width: 104px; height: 104px;
-  font-size: 52px; line-height: 1; border-radius: 34px;
-  background: #fff; border: 3px solid var(--pink-line);
-  box-shadow: 0 9px 0 rgba(255, 143, 177, .26), 0 20px 44px rgba(180, 140, 200, .30), inset 0 3px 0 #fff;
-  animation: splashPop .72s cubic-bezier(.22, 1.25, .36, 1) both;
+/* HUD 取景框（左上 / 右下角标） */
+.splash-frame { position: absolute; inset: 20px; pointer-events: none; }
+.splash-frame::before, .splash-frame::after {
+  content: ""; position: absolute; width: 46px; height: 46px;
+  border: 2px solid rgba(94, 224, 216, .5);
 }
-.splash-title {
-  margin: 28px 0 8px; font-size: 38px; font-weight: 800; letter-spacing: .6px;
-  background: linear-gradient(94deg, var(--pink-deep), #b98cff 55%, #65c8d8);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  animation: splashRise .6s ease .22s both;
+.splash-frame::before { left: 0; top: 0; border-right: 0; border-bottom: 0; }
+.splash-frame::after { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+
+/* 顶部 HUD 角标 */
+.splash-brand {
+  position: absolute; top: calc(28px + env(safe-area-inset-top)); left: 34px; z-index: 3;
+  display: flex; align-items: center; gap: 10px; animation: hudIn .5s ease .25s both;
 }
-.splash-title .arrow { color: var(--pink); -webkit-text-fill-color: var(--pink); }
-.splash-sub {
-  margin: 0 0 30px; color: var(--ink-soft); font-size: 14px;
-  animation: splashRise .6s ease .38s both;
+.splash-mark {
+  display: inline-grid; place-items: center; width: 30px; height: 30px;
+  font-size: 15px; color: #031018;
+  background: linear-gradient(160deg, #7ff0e4, #37b8b0);
+  box-shadow: 0 0 18px rgba(94, 224, 216, .55);
+}
+.splash-brand-txt { font-size: 14px; font-weight: 700; letter-spacing: 3px; color: #e6fbff; }
+.splash-brand-txt em, .splash-ver em, .splash-foot em {
+  display: block; font-style: normal; font-size: 9.5px; letter-spacing: 1.6px;
+  color: rgba(127, 233, 224, .75); margin-top: 3px;
+}
+.splash-ver {
+  position: absolute; top: calc(74px + env(safe-area-inset-top)); right: 34px; z-index: 3;
+  text-align: right; font-size: 11px; letter-spacing: 3px; color: #bfe6ef;
+  animation: hudIn .5s ease .32s both;
+}
+.splash-skip {
+  position: absolute; top: calc(28px + env(safe-area-inset-top)); right: 34px; z-index: 4;
+  padding: 8px 16px; cursor: pointer;
+  font-size: 12px; font-weight: 700; letter-spacing: 2px; color: #7fe9e0;
+  border: 1px solid rgba(94, 224, 216, .5); background: rgba(6, 20, 28, .55);
+  animation: hudIn .5s ease .2s both;
+}
+.splash-skip:hover { background: rgba(94, 224, 216, .16); }
+.splash-skip:active { transform: translateY(1px); }
+
+/* 左右竖向 HUD 标签 */
+.splash-side {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  font-size: 10.5px; line-height: 2.1; letter-spacing: 2px;
+  color: rgba(127, 233, 224, .8); animation: hudIn .5s ease .5s both;
+}
+.splash-side.ss-left { left: 22px; }
+.splash-side.ss-right { right: 22px; text-align: right; animation-delay: .6s; }
+
+/* 主标题组 */
+.splash-core {
+  position: absolute; left: 9%; top: 50%; transform: translateY(-50%);
+  max-width: 52%; animation: coreIn .8s ease .35s both;
+}
+@keyframes coreIn { from { opacity: 0; } to { opacity: 1; } }
+.splash-word {
+  position: relative; display: flex; align-items: baseline; gap: .16em; flex-wrap: wrap;
+  font-family: "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  font-size: clamp(30px, 5.6vw, 76px); font-weight: 800; letter-spacing: 2px;
+  animation: wordGlitch .16s steps(2) 1.5s 4;
+}
+.splash-word span, .splash-word i {
+  display: inline-block; font-style: normal; color: #f2fdff; opacity: 0;
+  text-shadow: 0 0 14px rgba(94, 224, 216, .7), 0 0 44px rgba(94, 224, 216, .32);
+  animation: wordIn .55s cubic-bezier(.2, .9, .2, 1) both;
+}
+.splash-word span:nth-of-type(1) { animation-delay: .5s; }
+.splash-word span:nth-of-type(2) { animation-delay: .82s; }
+.splash-word i {
+  color: #7ff0e4; animation-delay: .66s;
+  text-shadow: 0 0 16px #5ee0d8, 0 0 46px rgba(94, 224, 216, .6);
+}
+@keyframes wordIn { from { opacity: 0; transform: translateY(16px) scale(.95); filter: blur(7px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes wordGlitch {
+  0%, 100% { text-shadow: none; transform: translateX(0); }
+  50% { text-shadow: -3px 0 rgba(255, 40, 110, .8), 3px 0 rgba(0, 214, 255, .8); transform: translateX(1px); }
+}
+.splash-word::after {
+  content: ""; position: absolute; left: 0; right: 8%; bottom: -10px; height: 3px;
+  background: linear-gradient(90deg, transparent, #5ee0d8, transparent);
+  box-shadow: 0 0 14px #5ee0d8; animation: lineGrow 1s ease .95s both;
+}
+@keyframes lineGrow { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+
+.splash-cn {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 26px;
+  font-family: "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  font-size: clamp(14px, 1.7vw, 21px); letter-spacing: 4px; color: #eafcff;
+  animation: hudIn .6s ease 1.15s both;
+}
+.splash-cn b { font-weight: 400; font-size: .62em; letter-spacing: 2px; color: #5ee0d8; }
+.splash-en {
+  margin-top: 10px; font-size: 10.5px; letter-spacing: 6px;
+  color: rgba(127, 233, 224, .7); animation: hudIn .6s ease 1.3s both;
+}
+
+/* 右侧取景框：纯 CSS 画的一页「电子书」+ 扫描线 */
+.splash-art {
+  position: absolute; right: 5%; top: 50%; transform: translateY(-50%);
+  width: min(26vw, 300px); aspect-ratio: 3 / 4; border-radius: 14px;
+  border: 1px solid rgba(94, 224, 216, .45);
+  background:
+    linear-gradient(180deg, rgba(94, 224, 216, .12), rgba(94, 224, 216, 0) 62%),
+    repeating-linear-gradient(180deg, rgba(191, 230, 239, .16) 0 2px, transparent 2px 15px);
+  box-shadow: 0 0 44px rgba(94, 224, 216, .18), inset 0 0 70px rgba(46, 138, 176, .28);
+  animation: artIn .9s ease .85s both;
+}
+@keyframes artIn { from { opacity: 0; transform: translateY(-50%) scale(.94); } to { opacity: 1; transform: translateY(-50%) scale(1); } }
+.splash-art::before {
+  content: ""; position: absolute; left: 6%; right: 6%; height: 3px;
+  background: linear-gradient(90deg, transparent, #7ff0e4, transparent);
+  box-shadow: 0 0 18px #5ee0d8; animation: artScan 2.4s ease-in-out infinite;
+}
+@keyframes artScan { 0%, 100% { top: 12%; } 50% { top: 84%; } }
+.splash-art::after {
+  content: "EPUB"; position: absolute; left: 10%; bottom: 8%;
+  font-size: 10px; letter-spacing: 3px; color: rgba(127, 233, 224, .7);
+}
+
+/* 终端行 */
+.splash-term {
+  position: absolute; left: 34px; bottom: calc(96px + env(safe-area-inset-bottom));
+  font-size: 11.5px; line-height: 2; color: #7bf0a8; letter-spacing: 1px;
+}
+.splash-term span { display: block; opacity: 0; animation: termIn .3s ease both; }
+.splash-term span:nth-child(1) { animation-delay: 2.05s; }
+.splash-term span:nth-child(2) { animation-delay: 2.5s; }
+.splash-term span:nth-child(3) { animation-delay: 2.95s; }
+.splash-term i { font-style: normal; animation: cursorBlink .7s steps(2) infinite; }
+@keyframes termIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+@keyframes cursorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* 页脚标语 + ENTER */
+.splash-foot {
+  position: absolute; left: 34px; bottom: 34px; font-size: 10px; letter-spacing: 2px;
+  color: rgba(191, 230, 239, .8); animation: hudIn .5s ease 1.6s both;
 }
 .splash-enter {
-  display: inline-block; cursor: pointer; padding: 15px 40px; border-radius: 999px;
-  font-size: 15.5px; font-weight: 700; color: #fff;
-  background-image: linear-gradient(180deg, #ffa9c6, var(--pink-deep));
-  border: 2px solid #ff9dbd;
-  box-shadow: 0 6px 0 #d9537d, 0 14px 30px rgba(239, 98, 143, .32), inset 0 1px 0 rgba(255, 255, 255, .55);
-  animation: splashRise .6s ease .52s both;
-  transition: transform .12s ease, box-shadow .12s ease;
+  position: absolute; right: 34px; bottom: 34px; z-index: 4; padding: 11px 26px; cursor: pointer;
+  font-size: 12px; font-weight: 700; letter-spacing: 3px; color: #031018;
+  background: linear-gradient(160deg, #7ff0e4, #37b8b0);
+  box-shadow: 0 0 22px rgba(94, 224, 216, .55);
+  animation: hudIn .5s ease 2s both; transition: transform .12s ease, box-shadow .12s ease;
 }
-.splash-enter:active { transform: translateY(3px); box-shadow: 0 2px 0 #d9537d, inset 0 1px 0 rgba(255, 255, 255, .55); }
+.splash-enter:hover { box-shadow: 0 0 30px rgba(94, 224, 216, .85); }
+.splash-enter:active { transform: translateY(2px); }
 
-/* 启动页漂浮贴纸 */
-.splash-sticker {
-  position: absolute; font-size: 30px; opacity: .9; pointer-events: none;
-  animation: splashFloat 4.5s ease-in-out infinite;
+@keyframes hudIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* 中等宽度以下收起右侧取景框与竖向标签，避免拥挤 */
+@media (max-width: 1200px) {
+  .splash-art, .splash-side, .splash-ver { display: none; }
+  .splash-core { left: 7%; max-width: 80%; }
 }
-.splash-sticker.sl1 { left: -6%;   top: -8%;    --rot: -14deg; color: #f5a8c6; }
-.splash-sticker.sl2 { right: -4%;  top: -2%;    --rot: 12deg;  color: #b79cff; animation-delay: .5s; }
-.splash-sticker.sl3 { left: -2%;   bottom: -6%; --rot: 8deg;   color: #6fd3b8; animation-delay: 1s; }
-.splash-sticker.sl4 { right: -6%;  bottom: -10%; --rot: -10deg; color: #f3c453; animation-delay: 1.4s; }
-
-@keyframes splashPop { from { opacity: 0; transform: scale(.55) rotate(-18deg); } to { opacity: 1; transform: scale(1) rotate(-5deg); } }
-@keyframes splashRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes splashFloat { 0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); } 50% { transform: translateY(-13px) rotate(var(--rot, 0deg)); } }
 
 /* 页头漂浮装饰贴纸 */
 .hero-deco {
@@ -406,11 +531,18 @@ html.no-splash .splash { display: none; }
 
   /* 启动页窄屏收敛尺寸；页头装饰贴纸在窄屏隐藏，避免压到标题 */
   .hero-deco { display: none; }
-  .splash-inner { max-width: 100%; }
-  .splash-badge { width: 84px; height: 84px; font-size: 42px; border-radius: 28px; }
-  .splash-title { font-size: 27px; margin: 22px 0 6px; }
-  .splash-sub { font-size: 13px; margin-bottom: 24px; }
-  .splash-sticker { font-size: 24px; }
+  .splash-frame { inset: 12px; }
+  .splash-brand { left: 18px; gap: 8px; }
+  .splash-mark { width: 26px; height: 26px; font-size: 13px; }
+  .splash-brand-txt { font-size: 12px; letter-spacing: 2px; }
+  .splash-skip { right: 18px; padding: 7px 13px; letter-spacing: 1.5px; }
+  .splash-core { left: 6%; max-width: 88%; }
+  .splash-word { font-size: clamp(26px, 9vw, 46px); letter-spacing: 1px; }
+  .splash-cn { gap: 8px; margin-top: 18px; font-size: 13px; letter-spacing: 2px; }
+  .splash-en { margin-top: 7px; font-size: 9.5px; letter-spacing: 3px; }
+  .splash-term { left: 18px; bottom: calc(74px + env(safe-area-inset-bottom)); font-size: 10.5px; }
+  .splash-foot { left: 18px; bottom: 20px; letter-spacing: 1.5px; }
+  .splash-enter { right: 18px; bottom: 20px; padding: 9px 18px; letter-spacing: 2px; }
 }
 
 @media (hover: none) {

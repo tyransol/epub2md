@@ -13,19 +13,38 @@ try { if (sessionStorage.getItem('epub2md.splash') === 'done') document.document
 </script>
 </head>
 <body>
-<!-- 启动页：纯 CSS 动画，无新增 id；用 label 内嵌 checkbox 触发跳过 -->
+<!-- 启动页：纯 CSS 自绘的赛博 HUD 动画；无新增 id，靠 label 内嵌 checkbox 触发跳过 -->
 <div class="splash">
-  <label class="splash-skip" aria-label="跳过启动动画"><input type="checkbox" class="splash-toggle" tabindex="-1">跳过 ›</label>
-  <div class="splash-inner">
-    <span class="splash-sticker sl1" aria-hidden="true">✿</span>
-    <span class="splash-sticker sl2" aria-hidden="true">✦</span>
-    <span class="splash-sticker sl3" aria-hidden="true">♡</span>
-    <span class="splash-sticker sl4" aria-hidden="true">★</span>
-    <div class="splash-badge">📚</div>
-    <div class="splash-title">EPUB <span class="arrow">→</span> Markdown</div>
-    <p class="splash-sub">一书一文件 · 目录锚点 · Frontmatter 按主题规范构造</p>
-    <label class="splash-enter" aria-label="进入工具"><input type="checkbox" class="splash-toggle" tabindex="-1">进入 ›</label>
+  <div class="splash-grid" aria-hidden="true"></div>
+  <div class="splash-scan" aria-hidden="true"></div>
+  <div class="splash-frame" aria-hidden="true"></div>
+  <label class="splash-skip" aria-label="跳过启动动画"><input type="checkbox" class="splash-toggle" tabindex="-1">SKIP ›</label>
+
+  <div class="splash-brand" aria-hidden="true">
+    <span class="splash-mark">♛</span>
+    <span class="splash-brand-txt">EPUB2MD<em>DOCUMENT BUILDER · FOR A CLEANER LIBRARY</em></span>
   </div>
+  <div class="splash-ver" aria-hidden="true">EPUB2MD<em>V1.0</em></div>
+
+  <div class="splash-side ss-left" aria-hidden="true">PARSE<br>EXTRACT<br>UPLOAD<br>BUILD<br>CHECK</div>
+  <div class="splash-side ss-right" aria-hidden="true">MORE<br>ACCURATE<br>MORE<br>CONSISTENT</div>
+
+  <div class="splash-core">
+    <div class="splash-word"><span>EPUB</span><i>→</i><span>Markdown</span></div>
+    <div class="splash-cn"><b>◆◆◆◆◆</b>欢迎来到专业转换模式<b>◆◆◆◆◆</b></div>
+    <div class="splash-en">PROFESSIONAL CONVERT MODE</div>
+  </div>
+
+  <div class="splash-art" aria-hidden="true"></div>
+
+  <div class="splash-term" aria-hidden="true">
+    <span>&gt; initializing parser…</span>
+    <span>&gt; loading epub…</span>
+    <span>&gt; ready <i>▮</i></span>
+  </div>
+  <div class="splash-foot" aria-hidden="true">YOUR EPUB COMPANION<em>FOR A SMARTER LIBRARY</em></div>
+
+  <label class="splash-enter" aria-label="进入工具"><input type="checkbox" class="splash-toggle" tabindex="-1">ENTER ›</label>
 </div>
 
 <div class="wrap">
