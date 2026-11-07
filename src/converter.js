@@ -210,7 +210,9 @@ export async function convertEpub(file, fields, opts = {}) {
       if (!src) continue;
       const itemPath = resolvePath(p, src);
       if (/\/zhu\.png$/i.test(itemPath) || queued.has(itemPath)) continue;
-      if (!zip[itemPath]) throw new Error(`缺少图片 ${itemPath}（EPUB 内不存在该资源）`);
+      // 这里只是预上传，不负责校验：缺失的图交给渲染期按原逻辑报错，
+      // 避免把没被渲染的装饰图也变成致命错误。
+      if (!zip[itemPath]) continue;
       queued.add(itemPath);
       imageTasks.push({ bytes: zip[itemPath], name: itemPath });
     }
