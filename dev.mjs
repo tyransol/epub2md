@@ -12,9 +12,13 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 
+// 本地把 .env 读进 process.env（Node 20.12+）；没有 .env 也不影响静态服务。
+try { process.loadEnvFile('.env'); } catch {}
+
 const ROOT = resolve('.');
 const PORT = Number(process.env.PORT || 5173);
-const IMAGE_HOST = process.env.IMAGE_HOST || 'https://tc.iiiiii.cc.cd';
+const IMAGE_HOST = process.env.IMAGE_HOST || 'https://img.ixxxi.cc.cd';
+const IMGBED_TOKEN = process.env.IMGBED_TOKEN || '';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -40,9 +44,17 @@ const readBody = (req) => new Promise((ok, no) => {
 
 async function proxyUpload(req, res) {
   try {
+    if (!IMGBED_TOKEN) {
+      res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: '未配置 IMGBED_TOKEN（写入 epub2md/.env）' }));
+      return;
+    }
     const upstream = await fetch(IMAGE_HOST + '/upload', {
       method: 'POST',
-      headers: { 'content-type': req.headers['content-type'] || 'application/octet-stream' },
+      headers: {
+        'content-type': req.headers['content-type'] || 'application/octet-stream',
+        authorization: `Bearer ${IMGBED_TOKEN}`,
+      },
       body: await readBody(req),
     });
     res.writeHead(upstream.status, { 'content-type': 'application/json; charset=utf-8' });

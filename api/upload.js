@@ -1,16 +1,23 @@
 /**
- * Vercel Serverless Function：同源上传代理 → https://tc.iiiiii.cc.cd/upload
+ * Vercel Serverless Function：同源上传代理 → https://img.ixxxi.cc.cd/upload
  * 与 Cloudflare Pages 的 functions/upload.js 等价（原因见该文件注释）。
  * vercel.json 已把 /upload 重写到本路径，因此前端始终只打同源 /upload。
+ *
+ * 鉴权：API Token 只放服务端环境变量 IMGBED_TOKEN，绝不写进仓库。
  */
 
 export const config = { api: { bodyParser: false } };
 
-const IMAGE_HOST = 'https://tc.iiiiii.cc.cd';
+const IMAGE_HOST = 'https://img.ixxxi.cc.cd';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+  const token = process.env.IMGBED_TOKEN;
+  if (!token) {
+    res.status(500).json({ error: '未配置 IMGBED_TOKEN 环境变量' });
     return;
   }
   const chunks = [];
@@ -18,7 +25,10 @@ export default async function handler(req, res) {
 
   const upstream = await fetch(IMAGE_HOST + '/upload', {
     method: 'POST',
-    headers: { 'content-type': req.headers['content-type'] || 'application/octet-stream' },
+    headers: {
+      'content-type': req.headers['content-type'] || 'application/octet-stream',
+      authorization: `Bearer ${token}`,
+    },
     body: Buffer.concat(chunks),
   });
 

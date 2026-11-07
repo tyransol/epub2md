@@ -5,7 +5,7 @@
  * 图床地址与上传接口路径由调用方注入，默认指向工作区在用的 CloudFlare-ImgBed 部署。
  */
 
-export const DEFAULT_IMAGE_HOST = 'https://tc.iiiiii.cc.cd';
+export const DEFAULT_IMAGE_HOST = 'https://img.ixxxi.cc.cd';
 
 /**
  * 上传入口路径。始终打同源 `/upload`，由同源代理转发到图床：
@@ -44,23 +44,28 @@ const makeBody = (bytes, name) => {
 };
 
 /**
- * 图床限流（实测）：其 Telegram 后端约每分钟只收 ~20 张，超了返回
- *   500 {"error":"Too Many Requests: retry after 23"}
- * 一本书 20+ 张图连传必撞，所以先**主动限速**（约 17 张/分钟），
- * 撞上了则按它给的 retry after 秒数等待，而不是死等固定 0.4s。
+ * 并发上限（图床约定）：同一时刻最多 2 个上传请求，超出排队。
+ * 新图床按 API Token 计并发，不再按分钟限流，所以去掉旧的固定间隔。
  */
-const UPLOAD_INTERVAL_MS = 3500;
+const MAX_CONCURRENT = 2;
 const ATTEMPTS = 4;
 const MAX_WAIT_MS = 90_000;
 const RETRY_AFTER_RE = /retry after (\d+)/i;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-let lastUploadAt = 0;
-async function pace() {
-  const wait = lastUploadAt + UPLOAD_INTERVAL_MS - Date.now();
-  if (wait > 0) await sleep(wait);
-  lastUploadAt = Date.now();
+let activeUploads = 0;
+const uploadWaiters = [];
+
+function acquireSlot() {
+  if (activeUploads < MAX_CONCURRENT) { activeUploads++; return Promise.resolve(); }
+  return new Promise((resolve) => uploadWaiters.push(resolve));
+}
+
+function releaseSlot() {
+  activeUploads--;
+  const next = uploadWaiters.shift();
+  if (next) { activeUploads++; next(); }
 }
 
 const isTransient = (res) => !!res && (res.status === 429 || res.status >= 500);
@@ -108,38 +113,42 @@ export async function uploadImage(
   bytes, name, cache, imageHost = DEFAULT_IMAGE_HOST, fetchImpl = fetch, onWait = () => {}) {
   const hash = await sha256(bytes);
   if (cache && cache.has(hash)) return cache.get(hash);
-  await pace();                       // 主动限速，避免连传触发图床限流
-  const body = () => makeBody(bytes, name);
+  await acquireSlot();
+  try {
+    const body = () => makeBody(bytes, name);
 
-  let out = null;
-  try { out = await postWithRetry(fetchImpl, UPLOAD_PATH, body, onWait); } catch { out = null; }  // 纯静态托管：连不上代理
-  if (!out || out.res.status === 404 || out.res.status === 405) {                                 // 代理缺失 → 试直连
-    try { out = await postWithRetry(fetchImpl, imageHost + UPLOAD_PATH, body, onWait); } catch { out = null; }
-  }
-  if (!out) {
-    throw new Error(
-      `图床上传失败：同源代理 ${UPLOAD_PATH} 不可用，图床 ${imageHost} 也未返回 CORS 头，`
-      + '浏览器跨域读不到上传结果（文件可能已存入图床，但拿不到直链）。'
-      + '部署到 Cloudflare Pages / Vercel 时会自动带上代理；本地请用 npm run dev。');
-  }
-  const { res, detail } = out;
-  if (!res.ok) {
-    throw new Error(
-      `图床上传失败：HTTP ${res.status}（已重试 ${ATTEMPTS} 次）：${detail || '图床未返回说明'}`);
-  }
+    let out = null;
+    try { out = await postWithRetry(fetchImpl, UPLOAD_PATH, body, onWait); } catch { out = null; }  // 纯静态托管：连不上代理
+    if (!out || out.res.status === 404 || out.res.status === 405) {                                 // 代理缺失 → 试直连
+      try { out = await postWithRetry(fetchImpl, imageHost + UPLOAD_PATH, body, onWait); } catch { out = null; }
+    }
+    if (!out) {
+      throw new Error(
+        `图床上传失败：同源代理 ${UPLOAD_PATH} 不可用，图床 ${imageHost} 也未返回 CORS 头，`
+        + '浏览器跨域读不到上传结果（文件可能已存入图床，但拿不到直链）。'
+        + '部署到 Cloudflare Pages / Vercel 时会自动带上代理；本地请用 npm run dev。');
+    }
+    const { res, detail } = out;
+    if (!res.ok) {
+      throw new Error(
+        `图床上传失败：HTTP ${res.status}（已重试 ${ATTEMPTS} 次）：${detail || '图床未返回说明'}`);
+    }
 
-  const text = await res.text();
-  let json;
-  try { json = JSON.parse(text); } catch {
-    throw new Error('图床返回的不是 JSON（可能命中了静态托管的兜底页）：' + text.trim().slice(0, 80));
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); } catch {
+      throw new Error('图床返回的不是 JSON（可能命中了静态托管的兜底页）：' + text.trim().slice(0, 80));
+    }
+    const src = (Array.isArray(json) ? json[0] : json)?.src;
+    if (typeof src !== 'string' || !/^\/file\/[\w.%/-]+$/.test(src)) {
+      throw new Error('图床返回的 src 无效：' + JSON.stringify(json).slice(0, 120));
+    }
+    const url = imageHost + src;
+    if (cache) cache.set(hash, url);
+    return url;
+  } finally {
+    releaseSlot();
   }
-  const src = (Array.isArray(json) ? json[0] : json)?.src;
-  if (typeof src !== 'string' || !/^\/file\/[\w.%/-]+$/.test(src)) {
-    throw new Error('图床返回的 src 无效：' + JSON.stringify(json).slice(0, 120));
-  }
-  const url = imageHost + src;
-  if (cache) cache.set(hash, url);
-  return url;
 }
 
 /**

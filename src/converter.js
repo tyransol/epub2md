@@ -196,6 +196,34 @@ export async function convertEpub(file, fields, opts = {}) {
     coverUrl = await uploadImage(zip[coverPath], coverPath, cache, imageHost, fetchImpl, onWait);
   }
 
+  // 先把全书插图按 2 路并发传完，再顺序渲染；渲染时命中缓存，不再发请求。
+  // 图床约定并发上限 2，uploadImage 内部还有信号量兜底。
+  onProgress('预上传插图…');
+  const queued = new Set();
+  const imageTasks = [];
+  for (const item of spine) {
+    const p = fileOf(item);
+    if (!zip[p] || SKIP_PAGE.test(p)) continue;
+    const doc = xmlParse(readText(p));
+    for (const img of all(doc, 'img')) {
+      const src = clean(img.getAttribute('src'));
+      if (!src) continue;
+      const itemPath = resolvePath(p, src);
+      if (/\/zhu\.png$/i.test(itemPath) || queued.has(itemPath)) continue;
+      if (!zip[itemPath]) throw new Error(`缺少图片 ${itemPath}（EPUB 内不存在该资源）`);
+      queued.add(itemPath);
+      imageTasks.push({ bytes: zip[itemPath], name: itemPath });
+    }
+  }
+  const pending = imageTasks.slice();
+  const worker = async () => {
+    while (pending.length) {
+      const task = pending.shift();
+      await uploadImage(task.bytes, task.name, cache, imageHost, fetchImpl, onWait);
+    }
+  };
+  await Promise.all([worker(), worker()]);
+
   const stampInfo = await deriveStamp(bytes, fields.releaseDate, fields.japaneseTitle);
   const published = (fields.timePrecision === 'date') ? stampInfo.dateOnly : stampInfo.stamp;
   const series = clean(fields.series) || seriesName(title);

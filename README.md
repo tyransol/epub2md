@@ -93,7 +93,8 @@ EPUB 本地线索（dc:title / dc:creator / dc:identifier / 版权页「原著�
 项目无依赖、无构建：
 
 ```bash
-npm run dev          # node dev.mjs → http://localhost:5173
+cp .env.example .env   # 填入 IMGBED_TOKEN（不提交）
+npm run dev            # node dev.mjs → http://localhost:5173
 ```
 
 浏览器打开 <http://localhost:5173>。
@@ -107,60 +108,61 @@ npm run dev          # node dev.mjs → http://localhost:5173
 ### Cloudflare Pages
 
 1. 新建 Pages 项目，连接本仓库；构建命令留空，**输出目录填 `/`（仓库根目录）**。
-2. 或使用 CLI 直接上传：
+2. 在 **Settings → Environment variables** 添加 `IMGBED_TOKEN`（值就是图床 API Token，
+   只给服务端用，不会进前端 bundle）。
+3. 或使用 CLI 直接上传：
    ```bash
    npx wrangler pages deploy . --project-name epub-to-md
    ```
-3. 根目录的 `_headers` 会自动生效（缓存与安全响应头）。
-4. 仓库根的 `functions/` 会被自动识别为 Pages Functions（即同源上传代理 `/upload`），无需额外配置。
+4. 根目录的 `_headers` 会自动生效（缓存与安全响应头）。
+5. 仓库根的 `functions/` 会被自动识别为 Pages Functions（即同源上传代理 `/upload`），无需额外配置。
 
 ### Vercel
 
 1. 导入本仓库，Framework Preset 选 **Other**，Build Command 留空，Output Directory 填 `.`。
-2. 或使用 CLI：
+2. 在 **Settings → Environment Variables** 添加 `IMGBED_TOKEN`。
+3. 或使用 CLI：
    ```bash
    npx vercel --prod
    ```
-3. `vercel.json` 已配置安全响应头，并把 `/upload` 重写到 `api/upload`（同源上传代理）。
+4. `vercel.json` 已配置安全响应头，并把 `/upload` 重写到 `api/upload`（同源上传代理）。
 
 两边都把 `Cache-Control` 设为 `no-cache`：文件名没有内容哈希，宁可每次 304 复验，也不要让浏览器
 继续跑部署前的旧 bundle（曾因此出现「代码已修好、页面仍报旧错」）。部署完刷新即生效，必要时硬刷新。
 
 ## 图床
 
-默认图床为 `https://tc.iiiiii.cc.cd`（CloudFlare-ImgBed 部署），上传接口 `POST /upload`，
-返回 `{ src: "/file/..." }`；写入 Markdown 的图片直链都是该图床的绝对地址，不受代理影响。
+默认图床为 `https://img.ixxxi.cc.cd`（CloudFlare-ImgBed 部署），上传接口 `POST /upload`，
+返回 `[{"src":"/file/..."}]`；写入 Markdown 的图片直链都是该图床的绝对地址，不受代理影响。
 
-该部署的 `POST /upload` **不返回任何 CORS 响应头**（实测 `OPTIONS` 直接 405）。浏览器跨域直连时
-文件其实已经存进图床，但读取响应会被 CORS 拦成 `Failed to fetch`，拿不到直链。因此上传统一走
-**同源 `/upload` 代理**，由平台自带 Function 转发（本地则是 `dev.mjs`）：
+鉴权用 **API Token**（`Authorization: Bearer <token>`）。Token 只放服务端环境变量
+`IMGBED_TOKEN`，由同源代理注入；客户端与前端 bundle 都不接触它：
 
-| 环境 | 代理 |
-| --- | --- |
-| Cloudflare Pages | `functions/upload.js`（自动识别） |
-| Vercel | `api/upload.js` + `vercel.json` 的 `/upload` 重写 |
-| 本地 | `dev.mjs`（`npm run dev`） |
+| 环境 | 代理 | Token 来源 |
+| --- | --- | --- |
+| Cloudflare Pages | `functions/upload.js`（自动识别） | Pages 环境变量 `IMGBED_TOKEN` |
+| Vercel | `api/upload.js` + `vercel.json` 的 `/upload` 重写 | Vercel 环境变量 `IMGBED_TOKEN` |
+| 本地 | `dev.mjs`（`npm run dev`） | 项目根 `.env`（已 gitignore） |
 
-- **只想用纯静态托管**（GitHub Pages 等）：给图床响应加上 `Access-Control-Allow-Origin` 即可
-  （`*` 就够，上传不带凭据）；此时 [src/images.js](src/images.js) 会自动退回直连，
-  `functions/`、`api/`、`dev.mjs` 均可删除。
-- 图床**有速率上限与偶发 5xx**，实测速率为：
-  - 限流：其 Telegram 后端约每分钟只收 ~20 张，超了返回 `500 {"error":"Too Many Requests: retry after 23"}`。
-    一本书 20+ 张图连传必撞，所以上传**主动限速**约 3.5s 一张（≈17 张/分钟），先避开限流。
-  - 抖动：约 4% 的上传会返回 `500 {"error":"Failed to get file ID"}`。
+该图床的 `POST /upload` 不返回 CORS 头，浏览器跨域直连读不到响应，所以上传统一走
+**同源 `/upload` 代理**。
 
-  两者都按「最多 4 次尝试」重试：撞限流时**读它给的 `retry after` 秒数再等**（单次最长 90s），
-  其余情况按 0.8s / 2s / 4s 退避；等待期间界面会提示「图床限流，等待 Ns…」。仍然失败时报错会把
-  图床返回的原文一并带出来，不再只说 `HTTP 500`。
+- **只想用纯静态托管**（GitHub Pages 等）：直连要求图床自带 CORS 头，而且 token 会暴露在
+  前端，不推荐。此时 `functions/`、`api/`、`dev.mjs` 均可删除，但需要另配鉴权方案。
+- **并发上限 2**：图床按 API Token 计并发，同一时刻最多 2 个上传请求。转换器会先用 2 个
+  worker 把全书插图传完，再顺序渲染；[src/images.js](src/images.js) 里还有信号量兜底，不会超发。
+- 失败重试：最多 4 次；撞限流时读 `retry after` 秒数再等（单次最长 90s），其余按
+  0.8s / 2s / 4s 退避。仍失败会把图床返回的原文带出来，不再只说 `HTTP 500`。
 - **换图床**：改 [src/images.js](src/images.js) 的 `DEFAULT_IMAGE_HOST`，同时改
-  [functions/upload.js](functions/upload.js) 与 [api/upload.js](api/upload.js) 里的转发目标。
+  [functions/upload.js](functions/upload.js)、[api/upload.js](api/upload.js) 与
+  [dev.mjs](dev.mjs) 里的转发目标；鉴权头也在这三处。
 
 ## 已知限制
 
 - EPUB 上限 20 MB；`dc:creator` 为空会直接报错，要求手填作者。
 - 目录项少于 2 条会报错，避免把结构异常的 EPUB 转出一份废稿。
 - 图片按内容哈希缓存（localStorage），同一张图在不同书之间只上传一次。
-- 受图床限速，上传是「排队式」的：一本书 20+ 张图大约要等 1 分钟以上，期间界面会滚动提示等待。
+- 图床并发上限为 2，插图多时会两两上传；失败会重试并给出图床原文。
 
 ## 免责
 
